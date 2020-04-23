@@ -5,6 +5,8 @@
 #include "Components/SceneComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "Engine/StaticMeshActor.h"
+#include "Components/StaticMeshComponent.h"
 
 /* Gizmos */
 #include "Gizmos/BaseGizmo.h"
@@ -14,8 +16,6 @@
 
 /* Interface */
 #include "FocusableObject.h"
-
-
 
 
 // Sets default values
@@ -78,6 +78,7 @@ UClass* ATransformerActor::GetGizmoClass(TEnumAsByte<ETransformationType> Transf
 	default:									return nullptr;
 	}
 }
+
 
 bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 	, TArray<AActor*> IgnoredActors, bool bClearPreviousSelections, bool bTraceComponent)
@@ -305,6 +306,58 @@ void ATransformerActor::SetTransformationType(TEnumAsByte<ETransformationType> T
 {
 	CurrentTransformation = TransformationType;
 	UpdateGizmoPlacement();
+}
+
+void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& outComponentList, USceneComponent*& outGizmoPlacedComponent) const
+{
+	outComponentList = SelectedComponents;
+	if (Gizmo.IsValid())
+		outGizmoPlacedComponent = Gizmo->GetParentComponent();
+}
+
+void ATransformerActor::CopyActorProperties(AActor* SourceActor, AActor* TargetActor)
+{
+	//Check if the Actors are StaticMesh Actors
+	//For some reason, the ReinitializeProperties will work, but won't show anything
+	if (AStaticMeshActor* SourceSMActor = Cast<AStaticMeshActor>(SourceActor))
+	{
+		AStaticMeshActor* TargetSMActor = Cast<AStaticMeshActor>(TargetActor);
+		UStaticMeshComponent* SourceComponent  = SourceSMActor->GetStaticMeshComponent();
+		UStaticMeshComponent* TargetComponent = TargetSMActor->GetStaticMeshComponent();
+
+		if (SourceComponent && TargetComponent)
+		{
+			TargetComponent->SetMobility(EComponentMobility::Movable);
+			TargetComponent->SetStaticMesh(SourceComponent->GetStaticMesh());
+		}
+	}
+	else
+	{
+		TargetActor->ReinitializeProperties(SourceActor);
+		TargetActor->ExecuteConstruction(SourceActor->GetTransform(), nullptr, nullptr);
+	}
+}
+
+void ATransformerActor::CloneSelectedComponents(bool bSelectNewClones, bool bClearPreviousSelections)
+{
+	UWorld* world = GetWorld();
+	if (!world) return;
+
+	TArray<AActor*> newClones;
+	for (auto& c : SelectedComponents)
+	{
+		if (!c) continue;
+		if (AActor* owner = c->GetOwner())
+		{
+			FTransform spawnTransform = owner->GetTransform();
+			AActor* clone = world->SpawnActor(owner->GetClass(), &spawnTransform);
+			CopyActorProperties(owner, clone);
+			newClones.Add(clone);
+		}
+	}
+
+	if (newClones.Num() > 0 && bSelectNewClones)
+		SelectMultipleActors(newClones, bClearPreviousSelections);
 }
 
 void ATransformerActor::SelectComponent(class USceneComponent* Component, bool bClearPreviousSelections)

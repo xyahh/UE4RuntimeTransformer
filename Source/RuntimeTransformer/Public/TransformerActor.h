@@ -256,6 +256,26 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetTransformationType(TEnumAsByte<ETransformationType> TransformationType);
+	
+	/*
+	 * Gets the list of Selected Components.
+
+	 @return outComponentList - the List of Currently Selected Components
+	 @return outGizmoPlacedComponent - the Component in the list that currently has the Gizmo attached
+	*/
+	UFUNCTION(BlueprintCallable)
+	void GetSelectedComponents(TArray<class USceneComponent*>& outComponentList
+		, class USceneComponent*& outGizmoPlacedComponent) const;
+
+	/*
+	* Makes an exact copy of the Actors that are owners of the components and makes
+	* a copy of them.
+
+	* @param bSelectNewClones - whether to add the new clones to the Selection
+	* @param bClearPreviousSelections Whether to clear the previous selected Components 
+	*/
+	UFUNCTION(BlueprintCallable)
+	void CloneSelectedComponents(bool bSelectNewClones = true , bool bClearPreviousSelections = true);
 
 	/**
 	 * Select Component adds a given Component to a list of components that will be used for the Runtime Transforms
@@ -343,6 +363,8 @@ private:
 
 
 private:
+
+	void CopyActorProperties(AActor* Source, AActor* Target);
 
 	//The player controller whose Mouse is to be used for the Transformations
 	APlayerController* PlayerController;
