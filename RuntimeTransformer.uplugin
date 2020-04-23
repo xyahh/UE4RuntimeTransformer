@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "RuntimeTransformer",
+	"Description": "Runtime Transformer helps you translate/rotate/scale objects in runtime! Easily provide editing tools to your final product!",
+	"Category": "Other",
+	"CreatedBy": "Juan Marcelo Portillo",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "RuntimeTransformer",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
