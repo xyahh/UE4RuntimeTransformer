@@ -2,6 +2,6 @@
 	"BuildId": "10570792",
 	"Modules": 
 	{
-		"RuntimeTransformer": "UE4Editor-RuntimeTransformer.dll"
+		"RuntimeTransformer": "UE4Editor-RuntimeTransformer-0001.dll"
 	}
 }

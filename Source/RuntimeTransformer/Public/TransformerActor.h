@@ -30,6 +30,22 @@ protected:
 
 public:
 
+	/*
+	* This gets called everytime a Component / Actor is going to get added.
+	* The default return is TRUE, but it can be overriden to check for additional things 
+	* (e.g. checking if it implements an interface, has some property, etc)
+	
+	* @param OwnerActor: The Actor owning the Component Selected 
+	* @param Component: The Component Selected (if it's an Actor Selected, this would be its RootComponent)
+
+	* @return bool: Whether or not this Component should be added.
+	*/
+	UFUNCTION(BlueprintNativeEvent)
+	bool ShouldSelect(AActor* OwnerActor, class USceneComponent* Component);
+
+	//by default return true
+	virtual bool ShouldSelect_Implementation(AActor* OwnerActor, class USceneComponent* Component) { return true; }
+
 	/**
 	 * Setting a Player Controller makes most functionality automatic, but
 	 * The Player Controller is used to get the Mouse World Space Position & Direction for the given Transformations.

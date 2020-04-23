@@ -193,8 +193,6 @@ void ATransformerActor::Tick(float DeltaSeconds)
 {
 	if (!Gizmo.IsValid()) return;
 
-	Gizmo->UpdateGizmoSpace(CurrentSpaceType);
-
 	if (PlayerController)
 	{
 		FVector worldLocation, worldDirection;
@@ -208,6 +206,8 @@ void ATransformerActor::Tick(float DeltaSeconds)
 				, PlayerController->PlayerCameraManager->GetFOVAngle());
 		}
 	}
+
+	Gizmo->UpdateGizmoSpace(CurrentSpaceType);
 }
 
 void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVector& RayOrigin, const FVector& RayDirection)
@@ -309,38 +309,76 @@ void ATransformerActor::SetTransformationType(TEnumAsByte<ETransformationType> T
 
 void ATransformerActor::SelectComponent(class USceneComponent* Component, bool bClearPreviousSelections)
 {
-	if (bClearPreviousSelections)
-		DeselectAll();
-	SelectComponent_Internal(Component);
-	UpdateGizmoPlacement();
+	if (!Component) return;
+
+	if (ShouldSelect(Component->GetOwner(), Component))
+	{
+		if (bClearPreviousSelections)
+			DeselectAll();
+		SelectComponent_Internal(Component);
+		UpdateGizmoPlacement();
+	}
 }
 
 void ATransformerActor::SelectActor(AActor* Actor, bool bClearPreviousSelections)
 {
-	if (Actor)
-		SelectComponent(Actor->GetRootComponent(), bClearPreviousSelections);
+	if (!Actor) return;
+
+	if (ShouldSelect(Actor, Actor->GetRootComponent()))
+	{
+		if (bClearPreviousSelections)
+			DeselectAll();
+		SelectComponent_Internal(Actor->GetRootComponent());
+		UpdateGizmoPlacement();
+	}
 }
 
 void ATransformerActor::SelectMultipleComponents(const TArray<USceneComponent*>& Components, bool bClearPreviousSelections)
 {
-	if (bClearPreviousSelections)
-		DeselectAll();
+	bool bValidList = false;
 	for (auto& c : Components)
-		if (c) SelectComponent_Internal(c);
-	UpdateGizmoPlacement();
+	{
+		if (!c) continue;
+		if (!ShouldSelect(c->GetOwner(), c)) continue;
+
+		if (bClearPreviousSelections)
+		{
+			DeselectAll();
+			bClearPreviousSelections = false;
+			//only run once. This is not place outside in case a list is empty or contains only invalid components
+		}
+		bValidList = true;
+		SelectComponent_Internal(c);
+	}
+
+	if(bValidList) UpdateGizmoPlacement();
 }
 
 void ATransformerActor::SelectMultipleActors(const TArray<AActor*>& Actors, bool bClearPreviousSelections)
 {
-	if (bClearPreviousSelections)
-		DeselectAll();
-	for (auto& c : Actors)
-		if (c) SelectComponent_Internal(c->GetRootComponent());
-	UpdateGizmoPlacement();
+	bool bValidList = false;
+	for (auto& a : Actors)
+	{
+		if (!a) continue;
+		if (!ShouldSelect(a, a->GetRootComponent())) continue;
+
+		if (bClearPreviousSelections)
+		{
+			DeselectAll();
+			bClearPreviousSelections = false;
+			//only run once. This is not place outside in case a list is empty or contains only invalid components
+		}
+
+		bValidList = true;
+		SelectComponent_Internal(a->GetRootComponent());
+	}
+
+	if(bValidList) UpdateGizmoPlacement();
 }
 
 void ATransformerActor::DeselectComponent(USceneComponent* Component)
 {
+	if (!Component) return;
 	DeselectComponent_Internal(Component);
 	UpdateGizmoPlacement();
 }
@@ -362,9 +400,6 @@ void ATransformerActor::DeselectAll()
 void ATransformerActor::SelectComponent_Internal(USceneComponent* Component)
 {
 	if (!Component) return;
-
-	UE_LOG(LogRuntimeTransformer, Display, TEXT("Selecting Component: %s"), *Component->GetName());
-
 	CallFocus_Internal(Component);
 	SelectedComponents.AddUnique(Component);
 }
