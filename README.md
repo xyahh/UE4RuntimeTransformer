@@ -25,9 +25,10 @@ Content Assets to work with:
 Current Known Issues:
 - When Rotating and Scaling, the Gizmos shake just a little bit. This can go unnoticed but
 still an issue that needs fixing.
+- For now, the Binaries are only compiled for Windows only. Those that wish to distribute to Linux or Mac should have to compile the plugin in those machines as well.
 
 # Next Steps
-- Fix known issues
+- Fix known issues 
 - Add a custom Snapping Feature for all Transformations
 
 # Additional Steps
