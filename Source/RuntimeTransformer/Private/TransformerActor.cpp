@@ -35,6 +35,7 @@ ATransformerActor::ATransformerActor()
 	bTransformUFocusableObjects = true;
 	bRotateOnLocalAxis = false;
 	bForceMobility = false;
+	bToggleSelectedInMultiSelection = true;
 }
 
 void ATransformerActor::BeginPlay()
@@ -317,24 +318,29 @@ void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& ou
 
 void ATransformerActor::CopyActorProperties(AActor* SourceActor, AActor* TargetActor)
 {
+	
+	
+	
+
 	//Check if the Actors are StaticMesh Actors
-	//For some reason, the ReinitializeProperties will work, but won't show anything
+	//For some reason, the ReinitializeProperties will not work on Meshes unless we need an "update" on them :c
+	// Child of StaticMeshActors work, however...
 	if (AStaticMeshActor* SourceSMActor = Cast<AStaticMeshActor>(SourceActor))
 	{
 		AStaticMeshActor* TargetSMActor = Cast<AStaticMeshActor>(TargetActor);
 		UStaticMeshComponent* SourceComponent  = SourceSMActor->GetStaticMeshComponent();
 		UStaticMeshComponent* TargetComponent = TargetSMActor->GetStaticMeshComponent();
-
 		if (SourceComponent && TargetComponent)
 		{
+			TargetComponent;
 			TargetComponent->SetMobility(EComponentMobility::Movable);
-			TargetComponent->SetStaticMesh(SourceComponent->GetStaticMesh());
+			TargetComponent->SetStaticMesh(SourceComponent->GetStaticMesh()); 
 		}
 	}
 	else
 	{
 		TargetActor->ReinitializeProperties(SourceActor);
-		TargetActor->ExecuteConstruction(SourceActor->GetTransform(), nullptr, nullptr);
+		TargetActor->RerunConstructionScripts();
 	}
 }
 
@@ -454,18 +460,28 @@ void ATransformerActor::SelectComponent_Internal(USceneComponent* Component)
 {
 	if (!Component) return;
 	CallFocus_Internal(Component);
-	SelectedComponents.AddUnique(Component);
+
+	int32 Index = SelectedComponents.Find(Component);
+
+	if (INDEX_NONE == Index) //Component is not in list
+		SelectedComponents.Add(Component);
+	else if (bToggleSelectedInMultiSelection)
+		DeselectComponentByIndex_Internal(Component, Index);
 }
 
 void ATransformerActor::DeselectComponent_Internal(USceneComponent* Component)
 {
 	int32 Index = SelectedComponents.Find(Component);
 	if (Index != INDEX_NONE)
-	{
-		CallUnfocus_Internal(Component);
-		SelectedComponents.RemoveAt(Index);
-	}
+		DeselectComponentByIndex_Internal(Component, Index);
 }
+
+void ATransformerActor::DeselectComponentByIndex_Internal(USceneComponent* Component, int32 Index)
+{
+	CallUnfocus_Internal(Component);
+	SelectedComponents.RemoveAt(Index);
+}
+
 
 void ATransformerActor::CallFocus_Internal(USceneComponent* Component)
 {

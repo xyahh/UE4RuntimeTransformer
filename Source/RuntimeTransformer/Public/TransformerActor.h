@@ -268,8 +268,10 @@ public:
 		, class USceneComponent*& outGizmoPlacedComponent) const;
 
 	/*
-	* Makes an exact copy of the Actors that are owners of the components and makes
+	* [BETA] Makes an exact copy of the Actors that are owners of the components and makes
 	* a copy of them.
+	
+	* THIS IS STILL NOT FULLY TESTED. USE AT YOUR OWN RISK!
 
 	* @param bSelectNewClones - whether to add the new clones to the Selection
 	* @param bClearPreviousSelections Whether to clear the previous selected Components 
@@ -338,6 +340,7 @@ private:
 	so as to not call UpdateGizmo every time
 	*/
 	void DeselectComponent_Internal(class USceneComponent* Component);
+	void DeselectComponentByIndex_Internal(class USceneComponent* Component, int32 Index);
 
 	/* Interface Func calls */
 	void CallFocus_Internal(class USceneComponent* Component);
@@ -421,6 +424,10 @@ private:
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bTransformUFocusableObjects;
+
+	//Property that checks whether a CLICK on an already selected object should deselect the object or not.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	bool bToggleSelectedInMultiSelection;
 
 	UPROPERTY()
 	TWeakObjectPtr<class ABaseGizmo> Gizmo;
