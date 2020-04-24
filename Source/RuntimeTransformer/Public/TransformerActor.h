@@ -65,7 +65,7 @@ public:
 	 * there is no Transformation in Progress.
 	*/
 	UFUNCTION(BlueprintCallable)
-	TEnumAsByte<ETransformationDomain> GetCurrentDomain() const;
+	TEnumAsByte<ETransformationDomain> GetCurrentDomain(bool& TransformInProgress) const;
 
 
 	/**
@@ -268,10 +268,10 @@ public:
 		, class USceneComponent*& outGizmoPlacedComponent) const;
 
 	/*
-	* [BETA] Makes an exact copy of the Actors that are owners of the components and makes
+	* Makes an exact copy of the Actors that are owners of the components and makes
 	* a copy of them.
 	
-	* THIS IS STILL NOT FULLY TESTED. USE AT YOUR OWN RISK!
+	* Take care of not spamming this :)
 
 	* @param bSelectNewClones - whether to add the new clones to the Selection
 	* @param bClearPreviousSelections Whether to clear the previous selected Components 

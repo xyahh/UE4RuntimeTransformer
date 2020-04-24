@@ -57,8 +57,9 @@ void ATransformerActor::SetSpaceType(TEnumAsByte<ESpaceType> Type)
 	SetGizmo();
 }
 
-TEnumAsByte<ETransformationDomain> ATransformerActor::GetCurrentDomain() const
+TEnumAsByte<ETransformationDomain> ATransformerActor::GetCurrentDomain(bool& TransformInProgress) const
 {
+	TransformInProgress = (CurrentDomain != ETransformationDomain::TD_None);
 	return CurrentDomain;
 }
 
@@ -316,33 +317,6 @@ void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& ou
 		outGizmoPlacedComponent = Gizmo->GetParentComponent();
 }
 
-void ATransformerActor::CopyActorProperties(AActor* SourceActor, AActor* TargetActor)
-{
-	
-	
-	
-
-	//Check if the Actors are StaticMesh Actors
-	//For some reason, the ReinitializeProperties will not work on Meshes unless we need an "update" on them :c
-	// Child of StaticMeshActors work, however...
-	if (AStaticMeshActor* SourceSMActor = Cast<AStaticMeshActor>(SourceActor))
-	{
-		AStaticMeshActor* TargetSMActor = Cast<AStaticMeshActor>(TargetActor);
-		UStaticMeshComponent* SourceComponent  = SourceSMActor->GetStaticMeshComponent();
-		UStaticMeshComponent* TargetComponent = TargetSMActor->GetStaticMeshComponent();
-		if (SourceComponent && TargetComponent)
-		{
-			TargetComponent;
-			TargetComponent->SetMobility(EComponentMobility::Movable);
-			TargetComponent->SetStaticMesh(SourceComponent->GetStaticMesh()); 
-		}
-	}
-	else
-	{
-		TargetActor->ReinitializeProperties(SourceActor);
-		TargetActor->RerunConstructionScripts();
-	}
-}
 
 void ATransformerActor::CloneSelectedComponents(bool bSelectNewClones, bool bClearPreviousSelections)
 {
@@ -355,13 +329,13 @@ void ATransformerActor::CloneSelectedComponents(bool bSelectNewClones, bool bCle
 		if (!c) continue;
 		if (AActor* owner = c->GetOwner())
 		{
-			FTransform spawnTransform = owner->GetTransform();
-			AActor* clone = world->SpawnActor(owner->GetClass(), &spawnTransform);
-			CopyActorProperties(owner, clone);
-			newClones.Add(clone);
+			FTransform spawnTransform; //leave it as is since template will also handle the transform
+			FActorSpawnParameters spawnParams;
+			spawnParams.Template = owner;
+			if(AActor* clone = world->SpawnActor(owner->GetClass(), &spawnTransform, spawnParams))
+				newClones.Add(clone);
 		}
 	}
-
 	if (newClones.Num() > 0 && bSelectNewClones)
 		SelectMultipleActors(newClones, bClearPreviousSelections);
 }
