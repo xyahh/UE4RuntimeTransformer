@@ -73,6 +73,13 @@ void ABaseGizmo::ScaleGizmoScene(const FVector& ReferenceLocation, const FVector
 		ScalingScene->SetWorldScale3D(Scale);
 }
 
+FTransform ABaseGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform, const FTransform& DeltaTransform
+	, TEnumAsByte<ETransformationDomain> Domain
+	, float SnappingValue) const
+{
+	return DeltaTransform;
+}
+
 TEnumAsByte<ETransformationDomain> ABaseGizmo::GetTransformationDomain(USceneComponent* ComponentHit) const
 {
 	if (!ComponentHit) return ETransformationDomain::TD_None;

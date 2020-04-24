@@ -36,12 +36,13 @@ ATransformerActor::ATransformerActor()
 	bRotateOnLocalAxis = false;
 	bForceMobility = false;
 	bToggleSelectedInMultiSelection = true;
+	
 }
 
 void ATransformerActor::BeginPlay()
 {
 	Super::BeginPlay();
-
+	ResetAccumulatedTransform();
 	SetTransformationType(CurrentTransformation);
 	SetSpaceType(CurrentSpaceType);
 }
@@ -63,10 +64,15 @@ TEnumAsByte<ETransformationDomain> ATransformerActor::GetCurrentDomain(bool& Tra
 	return CurrentDomain;
 }
 
-void ATransformerActor::ReleaseDomain()
+void ATransformerActor::ClearDomain()
 {
 	CurrentDomain = ETransformationDomain::TD_None;
-	if (Gizmo.IsValid()) Gizmo->SetTransformProgressState(false, CurrentDomain);
+
+	//Clear the Accumulated tranform when we stop Transforming
+	ResetAccumulatedTransform();
+
+	if (Gizmo.IsValid()) 
+		Gizmo->SetTransformProgressState(false, CurrentDomain);
 }
 
 UClass* ATransformerActor::GetGizmoClass(TEnumAsByte<ETransformationType> TransformationType) const /* private */
@@ -81,6 +87,11 @@ UClass* ATransformerActor::GetGizmoClass(TEnumAsByte<ETransformationType> Transf
 	}
 }
 
+void ATransformerActor::ResetAccumulatedTransform()
+{
+	AccumulatedDeltaTransform = FTransform();
+	AccumulatedDeltaTransform.SetScale3D(FVector::ZeroVector); //Set Scale to 0 since def makes it 1.f, 1.f, 1.f
+}
 
 bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 	, TArray<AActor*> IgnoredActors, bool bClearPreviousSelections, bool bTraceComponent)
@@ -217,10 +228,23 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 {
 	if (!Gizmo.IsValid() || CurrentDomain == ETransformationDomain::TD_None) return;
 
-	FVector rayEnd = RayOrigin + 10'000'00 * RayDirection;
+	FVector rayEnd = RayOrigin + 1'000'000'00 * RayDirection;
 
-	FTransform deltaTransform = Gizmo->GetDeltaTransform(LookingVector, RayOrigin, rayEnd, CurrentDomain);
+	FTransform calculatedDeltaTransform = Gizmo->GetDeltaTransform(LookingVector, RayOrigin, rayEnd, CurrentDomain);
 
+	//The delta transform we are actually going to apply (same if there is no Snapping taking place)
+	FTransform actualDeltaTransform = calculatedDeltaTransform;
+
+
+	/* SNAPPING LOGIC */
+	bool* snappingEnabled = SnappingEnabled.Find(CurrentTransformation);
+	float* snappingValue = SnappingValues.Find(CurrentTransformation);
+
+	if (snappingEnabled && *snappingEnabled && snappingValue)
+			actualDeltaTransform = Gizmo->GetSnappedTransform(AccumulatedDeltaTransform
+				, calculatedDeltaTransform, CurrentDomain, *snappingValue);
+				//GetSnapped Transform Modifies Accumulated Delta Transform by how much Snapping Occurred
+		
 	for (auto& sc : SelectedComponents)
 	{
 		if (!sc) continue;
@@ -228,20 +252,27 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 		{
 			const FTransform& componentTransform = sc->GetComponentTransform();
 
-			FQuat deltaRotation = deltaTransform.GetRotation();
+			FQuat deltaRotation = actualDeltaTransform.GetRotation();
+
 			FVector deltaLocation = componentTransform.GetLocation() - Gizmo->GetActorLocation();
+
+			//DeltaScale is Unrotated Scale to Get Local Scale since World Scale is not supported
+			FVector deltaScale = componentTransform.GetRotation().UnrotateVector(actualDeltaTransform.GetScale3D());
 			
 			if(false == bRotateOnLocalAxis)
 				deltaLocation = deltaRotation.RotateVector(deltaLocation);
 
 			FTransform newTransform(
-				// Apply deltaRotation
 				deltaRotation * componentTransform.GetRotation(),
 				//adding Gizmo Location + prevDeltaLocation (i.e. location from Gizmo to Object after optional Rotating) + deltaTransform Location Offset
-				Gizmo->GetActorLocation() + deltaLocation + deltaTransform.GetLocation(),
-				//Unrotating Scale to Get Local Scale since World Scale is not supported
-				componentTransform.GetScale3D() + componentTransform.GetRotation().UnrotateVector(deltaTransform.GetScale3D()) 
-			);
+				deltaLocation + Gizmo->GetActorLocation()  + actualDeltaTransform.GetLocation(),
+				deltaScale + componentTransform.GetScale3D());			
+
+
+			/* SNAPPING LOGIC PER COMPONENT */
+			if (snappingEnabled && *snappingEnabled && snappingValue)
+				newTransform = Gizmo->GetSnappedTransformPerComponent(componentTransform
+					, newTransform, CurrentDomain, *snappingValue);
 
 			if (sc->Mobility != EComponentMobility::Type::Movable)
 				sc->SetMobility(EComponentMobility::Type::Movable);
@@ -251,7 +282,7 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 			{
 				if (bTransformUFocusableObjects)
 					sc->SetWorldTransform(newTransform);
-				CallOnNewDeltaTransformation_Internal(sc, deltaTransform);
+				CallOnNewDeltaTransformation_Internal(sc, newTransform);
 			}
 			else
 				sc->SetWorldTransform(newTransform); //regardless if its local space, DeltaTransform is already adapted to the Space.
@@ -266,7 +297,7 @@ bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 	, bool bClearPreviousSelections, bool bTraceComponent)
 {
 	//Assign as None just in case we don't hit Any Gizmos
-	CurrentDomain = ETransformationDomain::TD_None;
+	ClearDomain();
 
 	//Search for our Gizmo (if Valid) First before Selecting any item
 	if (Gizmo.IsValid())
@@ -287,8 +318,6 @@ bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 				}
 			}
 		}
-		//None of the Hits were a Gizmo so we set Transform to False
-		Gizmo->SetTransformProgressState(false, CurrentDomain);
 	}
 
 	//Only consider First Hit
@@ -306,8 +335,25 @@ bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 
 void ATransformerActor::SetTransformationType(TEnumAsByte<ETransformationType> TransformationType)
 {
+	//Don't continue if these are the same.
+	if (CurrentTransformation == TransformationType) return;
+
 	CurrentTransformation = TransformationType;
+
+	//Clear the Accumulated tranform when we have a new Transformation
+	ResetAccumulatedTransform();
+
 	UpdateGizmoPlacement();
+}
+
+void ATransformerActor::SetSnappingEnabled(TEnumAsByte<ETransformationType> TransformationType, bool bSnappingEnabled)
+{
+	SnappingEnabled.Add(TransformationType, bSnappingEnabled);
+}
+
+void ATransformerActor::SetSnappingValue(TEnumAsByte<ETransformationType> TransformationType, float SnappingValue)
+{
+	SnappingValues.Add(TransformationType, SnappingValue);
 }
 
 void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& outComponentList, USceneComponent*& outGizmoPlacedComponent) const
@@ -316,7 +362,6 @@ void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& ou
 	if (Gizmo.IsValid())
 		outGizmoPlacedComponent = Gizmo->GetParentComponent();
 }
-
 
 void ATransformerActor::CloneSelectedComponents(bool bSelectNewClones, bool bClearPreviousSelections)
 {
@@ -422,23 +467,25 @@ void ATransformerActor::DeselectActor(AActor* Actor)
 		DeselectComponent(Actor->GetRootComponent());
 }
 
-void ATransformerActor::DeselectAll()
+TArray<USceneComponent*> ATransformerActor::DeselectAll()
 {
-	auto ComponentsToDeselect = SelectedComponents;
-	for (auto& c : ComponentsToDeselect)
+	auto components = SelectedComponents;
+	for (auto& c : components)
 		DeselectComponent_Internal(c);
 	UpdateGizmoPlacement();
+	return components;
 }
 
 void ATransformerActor::SelectComponent_Internal(USceneComponent* Component)
 {
 	if (!Component) return;
-	CallFocus_Internal(Component);
-
 	int32 Index = SelectedComponents.Find(Component);
 
 	if (INDEX_NONE == Index) //Component is not in list
+	{
+		CallFocus_Internal(Component);
 		SelectedComponents.Add(Component);
+	}
 	else if (bToggleSelectedInMultiSelection)
 		DeselectComponentByIndex_Internal(Component, Index);
 }
@@ -455,7 +502,6 @@ void ATransformerActor::DeselectComponentByIndex_Internal(USceneComponent* Compo
 	CallUnfocus_Internal(Component);
 	SelectedComponents.RemoveAt(Index);
 }
-
 
 void ATransformerActor::CallFocus_Internal(USceneComponent* Component)
 {
@@ -474,7 +520,6 @@ void ATransformerActor::CallFocus_Internal(USceneComponent* Component)
 
 void ATransformerActor::CallUnfocus_Internal(USceneComponent* Component)
 {
-
 	auto focusableObjects = GetUFocusableObjects(Component);
 	if (focusableObjects.Num() > 0)
 	{

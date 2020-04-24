@@ -85,3 +85,22 @@ FTransform ARotationGizmo::GetDeltaTransform(const FVector& LookingVector, const
 
 	return deltaTransform;
 }
+
+FTransform ARotationGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
+	, const FTransform& DeltaTransform
+	, TEnumAsByte<ETransformationDomain> Domain
+	, float SnappingValue) const
+{
+	if (SnappingValue == 0.f) return DeltaTransform;
+
+	FTransform result = DeltaTransform;
+
+	FRotator addedRotation = outCurrentAccumulatedTransform.GetRotation().Rotator() 
+		+ DeltaTransform.GetRotation().Rotator();
+	
+	FRotator snappedRotation = addedRotation.GridSnap(FRotator(SnappingValue));
+	result.SetRotation(snappedRotation.Quaternion());
+	outCurrentAccumulatedTransform.SetRotation((addedRotation - snappedRotation).Quaternion());
+
+	return result;
+}

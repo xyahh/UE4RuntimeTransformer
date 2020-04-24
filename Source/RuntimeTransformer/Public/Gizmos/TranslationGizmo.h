@@ -23,6 +23,12 @@ public:
 	virtual FTransform GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
 		, const FVector& RayEndPoint,  TEnumAsByte<ETransformationDomain> Domain) override;
 
+	// Returns a Snapped Transform based on how much has been accumulated, the Delta Transform and Snapping Value
+	virtual FTransform GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
+		, const FTransform& DeltaTransform
+		, TEnumAsByte<ETransformationDomain> Domain
+		, float SnappingValue) const override;
+
 protected:
 
 	// The Hit Box for the XY-Plane Translation

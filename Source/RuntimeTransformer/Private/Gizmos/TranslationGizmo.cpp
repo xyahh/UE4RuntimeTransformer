@@ -110,3 +110,21 @@ FTransform ATranslationGizmo::GetDeltaTransform(const FVector& LookingVector, co
 
 	return deltaTransform;
 }
+
+FTransform ATranslationGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
+	, const FTransform& DeltaTransform
+	, TEnumAsByte<ETransformationDomain> Domain
+	, float SnappingValue) const
+{
+	if (SnappingValue == 0.f) return DeltaTransform;
+
+	FTransform result = DeltaTransform;
+
+	FVector addedLocation = outCurrentAccumulatedTransform.GetLocation()
+		+ DeltaTransform.GetLocation();
+
+	FVector snappedLocation = addedLocation.GridSnap(SnappingValue);
+	result.SetLocation(snappedLocation);
+	outCurrentAccumulatedTransform.SetLocation(addedLocation - snappedLocation);
+	return result;
+}

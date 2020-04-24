@@ -22,13 +22,16 @@ class RUNTIMETRANSFORMER_API IFocusableObject
 
 public:
 
+	//Focus is called right before the Component is added to the list.
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Focusable")
 	void Focus();
 
+	
+	//Unfocus is called right before the Component is removed from the list.
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Focusable")
 	void Unfocus();
 
-	/* The Delta Transform in World Space (Local for Scaling) that has been calculated for a Selected Focusable Object. */
+	//Called when there is a Delta Transform in World Space (Local for Scaling) that has been calculated for the Selected Focusable Object.
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Focusable")
 	void OnNewDeltaTransformation(const FTransform& DeltaTransform);
 

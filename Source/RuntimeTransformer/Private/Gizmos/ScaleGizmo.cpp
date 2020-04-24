@@ -123,3 +123,68 @@ FTransform AScaleGizmo::GetDeltaTransform(const FVector& LookingVector, const FV
 
 	return deltaTransform;
 }
+
+FTransform AScaleGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
+	, const FTransform& DeltaTransform
+	, TEnumAsByte<ETransformationDomain> Domain
+	, float SnappingValue) const
+{
+	if (SnappingValue == 0.f) return DeltaTransform;
+
+	FTransform result = DeltaTransform;
+	FVector addedScale = outCurrentAccumulatedTransform.GetScale3D() + DeltaTransform.GetScale3D();
+
+	float domains = 1.f;
+
+	switch (Domain)
+	{
+	case ETransformationDomain::TD_XY_Plane:
+	case ETransformationDomain::TD_YZ_Plane:
+	case ETransformationDomain::TD_XZ_Plane:
+		domains = 2.f;
+		break;
+	case ETransformationDomain::TD_XYZ:
+		domains = 3.f;
+		break;
+	}
+
+	FVector snappedScale = addedScale.GetSafeNormal()
+		* FMath::GridSnap(addedScale.Size(), FMath::Sqrt(FMath::Square(SnappingValue) * domains));
+
+	result.SetScale3D(snappedScale);
+	outCurrentAccumulatedTransform.SetScale3D(addedScale - snappedScale);
+	return result;
+}
+
+FTransform AScaleGizmo::GetSnappedTransformPerComponent(const FTransform& OldComponentTransform
+	, const FTransform& NewComponentTransform, TEnumAsByte<ETransformationDomain> Domain
+	, float SnappingValue) const
+{
+
+	FTransform result= NewComponentTransform;
+
+	FVector newScale = NewComponentTransform.GetScale3D();
+	if (!newScale.Equals(OldComponentTransform.GetScale3D(), 0.0001f))
+	{
+		FVector domainScale;
+		switch (Domain)
+		{
+		case ETransformationDomain::TD_X_Axis: domainScale = FVector(1.f, 0.f, 0.f); break;
+		case ETransformationDomain::TD_Y_Axis: domainScale = FVector(0.f, 1.f, 0.f); break;
+		case ETransformationDomain::TD_Z_Axis: domainScale = FVector(0.f, 0.f, 1.f); break;
+
+		case ETransformationDomain::TD_XY_Plane: domainScale = FVector(1.f, 1.f, 0.f); break;
+		case ETransformationDomain::TD_YZ_Plane: domainScale = FVector(0.f, 1.f, 1.f); break;
+		case ETransformationDomain::TD_XZ_Plane: domainScale = FVector(1.f, 0.f, 1.f); break;
+
+		case ETransformationDomain::TD_XYZ: domainScale = FVector(1.f, 1.f, 1.f); break;
+		}
+		FVector domainInverseScale = FVector::OneVector - domainScale;
+
+		newScale = newScale.GridSnap(SnappingValue);
+		FVector scale = (newScale * domainScale) + (NewComponentTransform.GetScale3D() * domainInverseScale);
+		result.SetScale3D(scale);
+	}
+
+	return result;
+}

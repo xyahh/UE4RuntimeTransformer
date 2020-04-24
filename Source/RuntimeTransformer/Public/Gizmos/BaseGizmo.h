@@ -42,6 +42,21 @@ public:
 	UFUNCTION(BlueprintCallable)
 	TEnumAsByte<ETransformationDomain> GetTransformationDomain(class USceneComponent* ComponentHit) const;
 
+	// Returns a Snapped Transform based on how much has been accumulated, the Delta Transform and Snapping Value
+	// Also changes the Accumulated Transform based on how much was snapped
+	virtual FTransform GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
+		, const FTransform& DeltaTransform
+		, TEnumAsByte<ETransformationDomain> Domain
+		, float SnappingValue) const ;
+
+	// Snapped Transform per Component is used when we need Absolute Snapping
+	// For Scaling, Absolute Snapping is needed and not delta ones 
+	// for example, Object Scale (1) and Snapping of (5). Snapping sequence should be 5, 10... and not 6, 11...
+	virtual FTransform GetSnappedTransformPerComponent(const FTransform& OldComponentTransform
+		, const FTransform& NewComponentTransform
+		, TEnumAsByte<ETransformationDomain> Domain
+		, float SnappingValue) const {	return NewComponentTransform; }
+
 protected:
 
 	// Calculates the Gizmo Scene Scale. This can be overriden (e.g. by Rotation Gizmo)
