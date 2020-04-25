@@ -221,7 +221,7 @@ void ATransformerActor::Tick(float DeltaSeconds)
 		}
 	}
 
-	Gizmo->UpdateGizmoSpace(CurrentSpaceType);
+	Gizmo->UpdateGizmoSpace(CurrentSpaceType); //ToDo: change when this is called to improve performance when a gizmo is there without doing anything
 }
 
 void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVector& RayOrigin, const FVector& RayDirection)
@@ -363,26 +363,91 @@ void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& ou
 		outGizmoPlacedComponent = Gizmo->GetParentComponent();
 }
 
-void ATransformerActor::CloneSelectedComponents(bool bSelectNewClones, bool bClearPreviousSelections)
+void ATransformerActor::CloneSelected(bool bSelectNewClones, bool bClearPreviousSelections, bool bCloneComponents)
 {
 	UWorld* world = GetWorld();
 	if (!world) return;
 
-	TArray<AActor*> newClones;
+	TArray<USceneComponent*> newClones;
+
+	TMap<USceneComponent*, USceneComponent*> cloneParentMap; //cloned component to original parents
+	TMap<USceneComponent*, USceneComponent*> originalClonedMap; //cloned components map (original, clone)
+
+	TSet<AActor*> clonedActors; //original actors stored
+	
 	for (auto& c : SelectedComponents)
 	{
 		if (!c) continue;
-		if (AActor* owner = c->GetOwner())
+		AActor* owner = c->GetOwner();
+		if (!owner) continue;
+
+		USceneComponent* clone = nullptr;
+		if (bCloneComponents && c != owner->GetRootComponent())
 		{
+			//for components, we have to manually create it using duplicateobject
+			clone = Cast<USceneComponent>(StaticDuplicateObject(c, owner));
+			if (clone)
+			{
+				//manually call these events
+				PostCreateBlueprintComponent(clone);
+				clone->OnComponentCreated();
+				originalClonedMap.Add(c, clone);
+				cloneParentMap.Add(clone, c->GetAttachParent());
+				clone->SetRelativeTransform(c->GetRelativeTransform());
+			}
+		} 
+
+		else
+		{
+			bool bAlreadyClonedActor;
+			clonedActors.Add(owner, &bAlreadyClonedActor);
+			if (bAlreadyClonedActor) continue; // if already cloned, don't continue!
+
 			FTransform spawnTransform; //leave it as is since template will also handle the transform
 			FActorSpawnParameters spawnParams;
 			spawnParams.Template = owner;
-			if(AActor* clone = world->SpawnActor(owner->GetClass(), &spawnTransform, spawnParams))
-				newClones.Add(clone);
+			if (AActor* cloneActor = world->SpawnActor(owner->GetClass(), &spawnTransform, spawnParams))
+			{
+				clone = cloneActor->GetRootComponent();
+				if (bCloneComponents)
+				{
+					originalClonedMap.Add(c, clone);
+					//cloneParentMap.Add(clone, c->GetAttachParent());
+
+					TArray<USceneComponent*> children;
+					clone->GetChildrenComponents(true, children);
+					for (auto& child : children)
+						child->DestroyComponent();
+				}
+			}
 		}
+
+		if (clone) 
+			newClones.Add(clone);
 	}
+
+	//attachment time & registry time for Components
+	for (auto& cc : cloneParentMap)
+	{
+		USceneComponent* parentToAttach = cc.Value;//originalparent
+
+		if (USceneComponent** cloneParent = originalClonedMap.Find(parentToAttach))
+		{
+			parentToAttach = *cloneParent; //cloned parent
+			if (AActor* parentOwner = (*cloneParent)->GetOwner())
+				cc.Key->Rename(0, parentOwner); //add to the cloned parent to completely remove relevancy with original parent
+
+			//remove the child from selected if we have a parent that is cloned 
+			// having a child selected with its parent will double the transformation of that child
+			newClones.Remove(cc.Key); 
+		}
+
+		cc.Key->AttachTo(parentToAttach, NAME_None, EAttachLocation::KeepRelativeOffset);
+		cc.Key->RegisterComponent();
+	}
+
 	if (newClones.Num() > 0 && bSelectNewClones)
-		SelectMultipleActors(newClones, bClearPreviousSelections);
+		SelectMultipleComponents(newClones, bClearPreviousSelections);
 }
 
 void ATransformerActor::SelectComponent(class USceneComponent* Component, bool bClearPreviousSelections)
@@ -467,12 +532,20 @@ void ATransformerActor::DeselectActor(AActor* Actor)
 		DeselectComponent(Actor->GetRootComponent());
 }
 
-TArray<USceneComponent*> ATransformerActor::DeselectAll()
+TArray<USceneComponent*> ATransformerActor::DeselectAll(bool bDestroyDeselected)
 {
 	auto components = SelectedComponents;
 	for (auto& c : components)
 		DeselectComponent_Internal(c);
 	UpdateGizmoPlacement();
+
+	if (bDestroyDeselected)
+	{
+		for (auto& c : components)
+			c->DestroyComponent();
+		components.Empty();
+	}
+
 	return components;
 }
 
