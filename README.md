@@ -1,7 +1,7 @@
 # UE4RuntimeTransformer
 A Runtime Gizmo Transformer tool helps you translate/rotate/scale objects in runtime! Easily provide editing tools to your final product!
 
-This is a UE4 Plugin made using C++ and Blueprints in Unreal Engine 4.22.
+This is a UE4 Plugin made using C++ and Blueprints in Unreal Engine 4.22. (Binaries currently in 4.24)
 
 Plugin targeted for both :
 - Users that want to customize absolutely everything, from how the Gizmo looks like, to how it behaves and how it interacts with different objects
