@@ -27,13 +27,13 @@ Plugin targeted for both :
 
 # Example Assets Included
 - Post Process Material for Object Selection
-- Gizmo Meshes to make your own personalized Gizmo
-- Default Example Gizmo Materials
-- Example Blueprints for each Gizmo and the TransformerActor (to see how one can easily add additional personalized features)
+- Example Gizmo Meshes to make your own personalized Gizmo
+- Example Gizmo Materials
+- Example Gizmo Child Blueprints for each Transformation
 
 # Current Known Issues
 - When Rotating and Scaling, the Gizmos shake just a little bit. This can go unnoticed but
-still an issue that needs fixing. EDIT: This looks to be a material issue (translucent)... still needs further investigating...
+still an issue that needs fixing.
 - For now, the Binaries are only compiled for Windows only. Those that wish to distribute to Linux or Mac should have to compile the plugin in those machines as well.
 
 # Next Steps
