@@ -7,29 +7,37 @@ Plugin targeted for both :
 - Users that want to customize absolutely everything, from how the Gizmo looks like, to how it behaves and how it interacts with different objects
 - Users that just want to quickly implement a Gizmo System in their game without having to customize much!
 
-# Version 1.0
+# Version 1.0 Features
 
-Translation, Rotation, Scaling Available for Single & Multiple Objects.
-Most functionality can be overriden (in both Blueprints & C++) for custom additional logic.
+- Plugin designed to work with both Actors and Components and their respective Local Spaces(e.g. moving Components in their Relative space instead of moving them in Actor Local Space)
 
-World Space & Local Space are both available for Translation and Rotation. Scaling is restricted to only work in Local Space (Scaling in World Space is a bit counter intuitive and difficult to manage)
+- Translation, Rotation, Scaling Available for Single & Multiple Actors/Components
 
-UFocusable Interface for specific objects that require specific logic when Focused(Selected), Unfocused (Unselected), and when there is a Delta Transform pending.
+- World Space & Local Space are both available for Translation and Rotation. Scaling is restricted to only work in Local Space.
 
-Content Assets to work with:
+- Cloning selections (for example, by holding a button while dragging) is supported. Components maintain hierarchy. Component-only cloning + Actor cloning are both supported
+
+- Destruction of Selected Actors/Components supported.
+
+- Snapping is supported for all transformations. Translation and Rotations are snapped based on their delta value, while Scaling is snapped based on the absolute value.
+
+- Most functionality can be overriden (in both Blueprints & C++) for custom additional logic.
+
+- UFocusable Interface for specific objects that require specific logic when Focused(Selected), Unfocused (Unselected), and when there is a Delta Transform pending.
+
+# Example Assets Included
 - Post Process Material for Object Selection
 - Gizmo Meshes to make your own personalized Gizmo
 - Default Example Gizmo Materials
 - Example Blueprints for each Gizmo and the TransformerActor (to see how one can easily add additional personalized features)
 
-Current Known Issues:
+# Current Known Issues
 - When Rotating and Scaling, the Gizmos shake just a little bit. This can go unnoticed but
-still an issue that needs fixing.
+still an issue that needs fixing. EDIT: This looks to be a material issue (translucent)... still needs further investigating...
 - For now, the Binaries are only compiled for Windows only. Those that wish to distribute to Linux or Mac should have to compile the plugin in those machines as well.
 
 # Next Steps
 - Fix known issues 
-- Add a custom Snapping Feature for all Transformations
 
 # Additional Steps
 - Make a video tutorial about the plugin
