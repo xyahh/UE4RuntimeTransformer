@@ -18,7 +18,7 @@ public:
 	// Sets default values for this actor's properties
 	ABaseGizmo();
 
-	virtual ETransformationType GetGizmoType() const { return ETransformationType::TT_None; }
+	virtual ETransformationType GetGizmoType() const { return ETransformationType::TT_NoTransform; }
 
 	virtual void UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType);
 

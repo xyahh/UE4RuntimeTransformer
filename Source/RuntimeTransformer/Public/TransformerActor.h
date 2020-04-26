@@ -8,7 +8,7 @@
 #include "TransformerActor.generated.h"
 
 UENUM(BlueprintType)
-enum EGizmoPlacement
+enum class EGizmoPlacement : uint8
 {
 	GP_None					UMETA(DisplayName = "None"),
 	GP_OnFirstSelection		UMETA(DisplayName = "On First Selection"),
@@ -405,6 +405,7 @@ private:
 	APlayerController* PlayerController;
 
 	//The Current Space being used, whether it is Local or World.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	TEnumAsByte<ESpaceType> CurrentSpaceType;
 
 	//The Transform Accumulated for Snapping

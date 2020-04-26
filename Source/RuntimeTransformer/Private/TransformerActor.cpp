@@ -426,6 +426,7 @@ void ATransformerActor::CloneSelected(bool bSelectNewClones, bool bClearPrevious
 			newClones.Add(clone);
 	}
 
+
 	//attachment time & registry time for Components
 	for (auto& cc : cloneParentMap)
 	{
@@ -437,17 +438,25 @@ void ATransformerActor::CloneSelected(bool bSelectNewClones, bool bClearPrevious
 			if (AActor* parentOwner = (*cloneParent)->GetOwner())
 				cc.Key->Rename(0, parentOwner); //add to the cloned parent to completely remove relevancy with original parent
 
-			//remove the child from selected if we have a parent that is cloned 
+			// remove the child from selected if we have a parent that is cloned 
 			// having a child selected with its parent will double the transformation of that child
 			newClones.Remove(cc.Key); 
+			//call the unfocus since since we are cloning and there might be a set property that we don't want			
+			CallUnfocus_Internal(cc.Key);	
 		}
 
-		cc.Key->AttachTo(parentToAttach, NAME_None, EAttachLocation::KeepRelativeOffset);
+		FAttachmentTransformRules attachmentRule(EAttachmentRule::KeepRelative, false);
+		cc.Key->AttachToComponent(parentToAttach, attachmentRule);
 		cc.Key->RegisterComponent();
 	}
 
-	if (newClones.Num() > 0 && bSelectNewClones)
+	if (bSelectNewClones)
 		SelectMultipleComponents(newClones, bClearPreviousSelections);
+
+	if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
+		Gizmo->SetTransformProgressState(true, CurrentDomain);
+	
+
 }
 
 void ATransformerActor::SelectComponent(class USceneComponent* Component, bool bClearPreviousSelections)
@@ -583,7 +592,7 @@ void ATransformerActor::CallFocus_Internal(USceneComponent* Component)
 	if (focusableObjects.Num() > 0)
 	{
 		for (auto& obj : focusableObjects)
-			IFocusableObject::Execute_Focus(obj);
+			IFocusableObject::Execute_Focus(obj, Component);
 	}
 	else
 		OnComponentSelectionChange(Component, true);
@@ -597,7 +606,7 @@ void ATransformerActor::CallUnfocus_Internal(USceneComponent* Component)
 	if (focusableObjects.Num() > 0)
 	{
 		for (auto& obj : focusableObjects)
-			IFocusableObject::Execute_Unfocus(obj);
+			IFocusableObject::Execute_Unfocus(obj, Component);
 	}
 	else
 		OnComponentSelectionChange(Component, false);
@@ -607,7 +616,7 @@ void ATransformerActor::CallOnNewDeltaTransformation_Internal(USceneComponent* C
 {
 	auto focusableObjects = GetUFocusableObjects(Component);
 	for (auto& obj : focusableObjects)
-		IFocusableObject::Execute_OnNewDeltaTransformation(obj, DeltaTransform);
+		IFocusableObject::Execute_OnNewDeltaTransformation(obj, Component, DeltaTransform);
 }
 
 TArray<UObject*> ATransformerActor::GetUFocusableObjects(USceneComponent* Component) const
