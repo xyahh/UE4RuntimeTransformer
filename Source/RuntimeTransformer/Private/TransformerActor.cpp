@@ -377,8 +377,8 @@ void ATransformerActor::CloneSelected(bool bSelectNewClones, bool bClearPrevious
 	else
 		CloneSelected_Actors(bSelectNewClones, bClearPreviousSelections);
 
-	//if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
-	//	Gizmo->SetTransformProgressState(true, CurrentDomain);
+	if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
+		Gizmo->SetTransformProgressState(true, CurrentDomain);
 }
 
 void ATransformerActor::CloneSelected_Actors(bool bSelectNewClones, bool bClearPreviousSelections)
@@ -460,6 +460,8 @@ void ATransformerActor::CloneSelected_Components(bool bSelectNewClones, bool bCl
 		//original parent
 		USceneComponent* parent = cp.Value; 
 
+		AActor* actorOwner = cp.Value->GetOwner();
+
 		//find if we cloned the original parent
 		USceneComponent** cloneParent = OcCc.Find(parent); 
 
@@ -472,23 +474,32 @@ void ATransformerActor::CloneSelected_Components(bool bSelectNewClones, bool bCl
 		{
 			//couldn't find its parent, so find the parent of the parent and see if it's in the list.
 			//repeat until found or root is reached
-			AActor* actorOwner = parent->GetOwner();
 			while (1)
 			{
-				cloneParent = OcCc.Find(parent->GetAttachParent());
-				if (cloneParent || parent == actorOwner->GetRootComponent()) //root reached..
+				//if parent is root, then no need to find parents above it. (none)
+				//attach to original parent, since there are no cloned parents.
+				if (parent == actorOwner->GetRootComponent())
 				{
+					parent = cp.Value;
+					break;
+				}
+				
+				//check if parents have been cloned
+				cloneParent = OcCc.Find(parent->GetAttachParent());
+				if (cloneParent)
+				{
+					//attach to cloned parent if found
 					parent = *cloneParent;
 					break;
 				}
-				parent = parent->GetAttachParent();
+				parent = parent->GetAttachParent(); //move up in the hierarchy
 			}
 		}
 
 		cp.Key->AttachToComponent(parent, attachmentRule);
 		cp.Key->RegisterComponent();
 
-		if(parent == cp.Value) //check if the parent of the cloned is original (means it's topmost)
+		if(parent == cp.Value || parent == actorOwner->GetRootComponent()) //check if the parent of the cloned is original (means it's topmost)
 			SelectComponent(cp.Key, false); //only select those that have an "original parent". 
 		//Selecting childs and parents can cause weird issues so only select the topmost clones (those that do not have cloned parents!)
 	}
