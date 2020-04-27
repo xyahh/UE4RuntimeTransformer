@@ -2,8 +2,8 @@
 
 
 #include "SelectableComponent.h"
-#include "Public/FocusableObject.h"
-#include "Public/TransformerActor.h"
+#include "RuntimeTransformer/Public/FocusableObject.h"
+#include "RuntimeTransformer/Public/TransformerActor.h"
 #include "Components/SceneComponent.h"
 
 FSelectableComponent::FSelectableComponent(class USceneComponent* Component_) 

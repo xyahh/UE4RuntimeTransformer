@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "RuntimeTransformer.h"
-#include "Private/SelectableComponent.h"
+#include "RuntimeTransformer/Private/SelectableComponent.h"
 #include "TransformerActor.generated.h"
 
 UENUM(BlueprintType)
