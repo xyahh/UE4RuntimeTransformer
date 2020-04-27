@@ -41,9 +41,9 @@ FTransform ATranslationGizmo::GetDeltaTransform(const FVector& LookingVector, co
 		// the direction of travel (only used for Axis Domains)
 		FVector targetDirection(0.f);
 
-		FVector forwardVector = GetActorForwardVector();
-		FVector rightVector = GetActorRightVector();
-		FVector upVector = GetActorUpVector();
+		FVector forwardVector	= GetActorForwardVector();
+		FVector rightVector		= GetActorRightVector();
+		FVector upVector		= GetActorUpVector();
 
 
 		switch (Domain)
@@ -51,7 +51,8 @@ FTransform ATranslationGizmo::GetDeltaTransform(const FVector& LookingVector, co
 		case ETransformationDomain::TD_X_Axis:
 		{
 			targetDirection = forwardVector;
-			if (FMath::Abs(FVector::DotProduct(LookingVector, rightVector)) > Cos45Deg) planeNormal = rightVector;
+			if (FMath::Abs(FVector::DotProduct(LookingVector, rightVector)) > Cos45Deg) 
+				planeNormal = rightVector;
 			else planeNormal = upVector;
 			break;
 		}
@@ -119,11 +120,25 @@ FTransform ATranslationGizmo::GetSnappedTransform(FTransform& outCurrentAccumula
 	if (SnappingValue == 0.f) return DeltaTransform;
 
 	FTransform result = DeltaTransform;
+	FVector addedLocation = outCurrentAccumulatedTransform.GetLocation() + DeltaTransform.GetLocation();
 
-	FVector addedLocation = outCurrentAccumulatedTransform.GetLocation()
-		+ DeltaTransform.GetLocation();
+	float domains = 1.f;
 
-	FVector snappedLocation = addedLocation.GridSnap(SnappingValue);
+	switch (Domain)
+	{
+	case ETransformationDomain::TD_XY_Plane:
+	case ETransformationDomain::TD_YZ_Plane:
+	case ETransformationDomain::TD_XZ_Plane:
+		domains = 2.f;
+		break;
+	case ETransformationDomain::TD_XYZ:
+		domains = 3.f;
+		break;
+	}
+
+	FVector snappedLocation = addedLocation.GetSafeNormal()
+		* FMath::GridSnap(addedLocation.Size(), FMath::Sqrt(FMath::Square(SnappingValue) * domains));
+
 	result.SetLocation(snappedLocation);
 	outCurrentAccumulatedTransform.SetLocation(addedLocation - snappedLocation);
 	return result;

@@ -260,6 +260,7 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 			//DeltaScale is Unrotated Scale to Get Local Scale since World Scale is not supported
 			FVector deltaScale = componentTransform.GetRotation().UnrotateVector(actualDeltaTransform.GetScale3D());
 
+
 			if (false == bRotateOnLocalAxis)
 				deltaLocation = deltaRotation.RotateVector(deltaLocation);
 
