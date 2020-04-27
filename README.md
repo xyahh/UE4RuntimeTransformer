@@ -9,11 +9,12 @@ Plugin targeted for both :
 
 # Information
 
-Contact juan@xyah.games
+Sample project: https://github.com/xyahh/UE4RuntimeTransformer_Example
 
-Sample project https://github.com/xyahh/UE4RuntimeTransformer_Example
+Documentation:  https://rtt.xyah.games/
 
-Documentation https://rtt.xyah.games/
+Contact: juan@xyah.games
+
 
 # Version 1.0 Features
 
