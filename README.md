@@ -7,6 +7,9 @@ Plugin targeted for both :
 - Users that want to customize absolutely everything, from how the Gizmo looks like, to how it behaves and how it interacts with different objects
 - Users that just want to quickly implement a Gizmo System in their game without having to customize much!
 
+Documentation
+https://rtt.xyah.games/
+
 # Version 1.0 Features
 
 - Plugin designed to work with both Actors and Components and their respective Local Spaces(e.g. moving Components in their Relative space instead of moving them in Actor Local Space)
@@ -41,4 +44,3 @@ still an issue that needs fixing.
 
 # Additional Steps
 - Make a video tutorial about the plugin
-- Make a documentation tutorial about the plugin
