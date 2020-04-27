@@ -47,6 +47,4 @@ still an issue that needs fixing.
 
 # Next Steps
 - Fix known issues 
-
-# Additional Steps
-- Make a video tutorial about the plugin
+- Add support for Network Replication
