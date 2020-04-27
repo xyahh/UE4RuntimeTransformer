@@ -24,15 +24,15 @@ public:
 
 	//Focus is called right before the Component is added to the list.
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Focusable")
-	void Focus(class USceneComponent* Component);
+	void Focus(class USceneComponent* Component, bool bComponentBased);
 
 	
 	//Unfocus is called right before the Component is removed from the list.
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Focusable")
-	void Unfocus(class USceneComponent* Component);
+	void Unfocus(class USceneComponent* Component, bool bComponentBased);
 
 	//Called when there is a Delta Transform in World Space (Local for Scaling) that has been calculated for the Selected Focusable Object.
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Focusable")
-	void OnNewDeltaTransformation(class USceneComponent* Component, const FTransform& DeltaTransform);
+	void OnNewTransformation(class USceneComponent* Component, const FTransform& NewTransform, bool bComponentBased);
 
 };

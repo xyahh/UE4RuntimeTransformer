@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "RuntimeTransformer.h"
+#include "Private/SelectableComponent.h"
 #include "TransformerActor.generated.h"
 
 UENUM(BlueprintType)
@@ -93,7 +94,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByObjectTypes(float TraceDistance, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true, bool bTraceComponent = false);
+		, bool bClearPreviousSelections = true);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -112,7 +113,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByChannel(float TraceDistance, TEnumAsByte<ECollisionChannel> TraceChannel
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true, bool bTraceComponent = false);
+		, bool bClearPreviousSelections = true);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -131,7 +132,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByProfile(float TraceDistance, const FName& ProfileName
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true, bool bTraceComponent = false);
+		, bool bClearPreviousSelections = true);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -150,7 +151,7 @@ public:
 	bool TraceByObjectTypes(const FVector& StartLocation, const FVector& EndLocation
 		, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true, bool bTraceComponent = false);
+		, bool bClearPreviousSelections = true);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -169,7 +170,7 @@ public:
 	bool TraceByChannel(const FVector& StartLocation, const FVector& EndLocation
 		, TEnumAsByte<ECollisionChannel> TraceChannel
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true, bool bTraceComponent = false);
+		, bool bClearPreviousSelections = true);
 
 
 	/**
@@ -189,7 +190,7 @@ public:
 	bool TraceByProfile(const FVector& StartLocation, const FVector& EndLocation
 		, const FName& ProfileName
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true, bool bTraceComponent = false);
+		, bool bClearPreviousSelections = true);
 
 	// Update every Frame
 	// Checks for Mouse Update
@@ -222,9 +223,7 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool HandleTracedObjects(const TArray<FHitResult>& HitResults
-		, bool bClearPreviousSelections = true, bool bTraceComponent = false);
-
-protected:
+		, bool bClearPreviousSelections = true);
 
 	/*
 	 * Called when the Gizmo State has changed (i.e. Domain has changed)
@@ -249,16 +248,29 @@ protected:
 
 	 * @param Component - the Component selected/deselected
 	 * @param bSelected - whether the given component was selected or unselected
+	 * @param bImplementsUFocusable - whether the given Component implements UFocusable (Actor considered, if actors are traced)
 	*/
 	UFUNCTION(BlueprintNativeEvent, Category = "Runtime Transformer")
-	void OnComponentSelectionChange(class USceneComponent* Component, bool bSelected);
+	void OnComponentSelectionChange(class USceneComponent* Component, bool bSelected, bool bImplementsUFocusable);
 
-	virtual void OnComponentSelectionChange_Implementation(class USceneComponent* Component, bool bSelected)
+	virtual void OnComponentSelectionChange_Implementation(class USceneComponent* Component
+		, bool bSelected, bool bImplementsUFocusable)
 	{
 		//This should be overriden for custom logic
 	}
 
 public:
+
+	/**
+	 * Whether to Set the System to work with Components (true)
+	 * or to work with Actors (false)
+
+	 @see bComponentBased
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
+	void SetComponentBased(bool bIsComponentBased);
+
+	bool GetComponentBased() const { return bComponentBased; }
 
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void SetTransformationType(TEnumAsByte<ETransformationType> TransformationType);
@@ -299,10 +311,18 @@ public:
 
 	* @param bSelectNewClones - whether to add the new clones to the Selection
 	* @param bClearPreviousSelections Whether to clear the previous selected Components 
-	* @param bCloneComponents - whether instead of cloning actors and selecting them, we only clone Components  (this is recommendeded to be consistent with how tracing (bSelectComponents) is done)
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void CloneSelected(bool bSelectNewClones = true , bool bClearPreviousSelections = true, bool bCloneComponents = false);
+	void CloneSelected(bool bSelectNewClones = true , bool bClearPreviousSelections = true);
+
+private:
+
+	void CloneSelected_Actors(bool bSelectNewClones, bool bClearPreviousSelections);
+
+	void CloneSelected_Components(bool bSelectNewClones, bool bClearPreviousSelections);
+
+public:
+
 
 	/**
 	 * Select Component adds a given Component to a list of components that will be used for the Runtime Transforms
@@ -367,19 +387,11 @@ private:
 	void SelectComponent_Internal(class USceneComponent* Component);
 
 	/*
-	The core functionality, but can be called by Deselection of Multiple objects
+	The core functionality, but can be called by Selection of Multiple objects
 	so as to not call UpdateGizmo every time
 	*/
 	void DeselectComponent_Internal(class USceneComponent* Component);
-	void DeselectComponentByIndex_Internal(class USceneComponent* Component, int32 Index);
-
-	/* Interface Func calls */
-	void CallFocus_Internal(class USceneComponent* Component);
-	void CallUnfocus_Internal(class USceneComponent* Component);
-	void CallOnNewDeltaTransformation_Internal(class USceneComponent* Component, const FTransform& DeltaTransform);
-
-	//gets either the Parent, or Child (or Both) UObjects that Implement UFocusable
-	TArray<UObject*> GetUFocusableObjects(class USceneComponent* Component) const;
+	void DeselectComponentAtIndex_Internal(class USceneComponent* Component, int32 Index);
 
 	/**
 	 * Creates / Replaces Gizmo with the Current Transformation.
@@ -454,7 +466,7 @@ private:
 	 * Array storing Selected Components. Although a quick O(1) removal is needed (like a Set),
 	 * it is Crucial that we maintain the order of the elements as they were selected
 	 */
-	TArray<class USceneComponent*> SelectedComponents;
+	TArray<FSelectableComponent> SelectedComponents;
 
 	/*
 	* Map storing the Snap values for each transformation
@@ -491,7 +503,7 @@ private:
 	bool bRotateOnLocalAxis;
 
 	/**
-	 * Whether to Apply the Delta Transforms to objects that Implement the UFocusable Interface.
+	 * Whether to Apply the Transforms to objects that Implement the UFocusable Interface.
 	 * if True, the Transforms will be applied.
 	 * if False, the Transforms will not be applied.
 
@@ -503,4 +515,12 @@ private:
 	//Property that checks whether a CLICK on an already selected object should deselect the object or not.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bToggleSelectedInMultiSelection;
+
+	/*
+	 * Property that checks whether Components are considered in trace 
+	 or the Actors are.
+	 * This property affects how Cloning, Tracing is done and Interface checking is done
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	bool bComponentBased;
 };

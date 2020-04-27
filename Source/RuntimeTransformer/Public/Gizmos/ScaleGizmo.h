@@ -22,9 +22,6 @@ public:
 
 	virtual void UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType);
 
-	//Scale does not support World Space! (Just like UE4's Scale does not!)
-	virtual bool SupportsWorldSpace() const { return false; };
-
 	virtual FTransform GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
 		, const FVector& RayEndPoint, TEnumAsByte<ETransformationDomain> Domain) override;
 

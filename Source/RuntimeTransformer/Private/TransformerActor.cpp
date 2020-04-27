@@ -24,9 +24,9 @@ ATransformerActor::ATransformerActor()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	GizmoPlacement = EGizmoPlacement::GP_OnLastSelection;
+	GizmoPlacement			= EGizmoPlacement::GP_OnLastSelection;
 	CurrentTransformation = ETransformationType::TT_Translation;
-	CurrentDomain = ETransformationDomain::TD_None;
+	CurrentDomain		= ETransformationDomain::TD_None;
 	CurrentSpaceType = ESpaceType::ST_World;
 	TranslationGizmoClass	= ATranslationGizmo::StaticClass();
 	RotationGizmoClass		= ARotationGizmo::StaticClass();
@@ -36,7 +36,8 @@ ATransformerActor::ATransformerActor()
 	bRotateOnLocalAxis = false;
 	bForceMobility = false;
 	bToggleSelectedInMultiSelection = true;
-	
+	bComponentBased = false;
+
 }
 
 void ATransformerActor::BeginPlay()
@@ -94,7 +95,7 @@ void ATransformerActor::ResetAccumulatedTransform()
 }
 
 bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
-	, TArray<AActor*> IgnoredActors, bool bClearPreviousSelections, bool bTraceComponent)
+	, TArray<AActor*> IgnoredActors, bool bClearPreviousSelections)
 {
 	if (PlayerController)
 	{
@@ -102,14 +103,14 @@ bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance, TArray<TEnu
 		if (PlayerController->DeprojectMousePositionToWorld(worldLocation, worldDirection))
 		{
 			return TraceByObjectTypes(worldLocation, worldLocation + worldDirection * TraceDistance
-				, CollisionChannels, IgnoredActors, bClearPreviousSelections, bTraceComponent);
+				, CollisionChannels, IgnoredActors, bClearPreviousSelections);
 		}
 	}
 	return false;
 }
 
 bool ATransformerActor::MouseTraceByChannel(float TraceDistance, TEnumAsByte<ECollisionChannel> TraceChannel, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections, bool bTraceComponent)
+	, bool bClearPreviousSelections)
 {
 	if (PlayerController)
 	{
@@ -117,14 +118,14 @@ bool ATransformerActor::MouseTraceByChannel(float TraceDistance, TEnumAsByte<ECo
 		if (PlayerController->DeprojectMousePositionToWorld(worldLocation, worldDirection))
 		{
 			return TraceByChannel(worldLocation, worldLocation + worldDirection * TraceDistance
-				, TraceChannel, IgnoredActors, bClearPreviousSelections, bTraceComponent);
+				, TraceChannel, IgnoredActors, bClearPreviousSelections);
 		}
 	}
 	return false;
 }
 
 bool ATransformerActor::MouseTraceByProfile(float TraceDistance, const FName& ProfileName, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections, bool bTraceComponent)
+	, bool bClearPreviousSelections)
 {
 	if (PlayerController)
 	{
@@ -132,7 +133,7 @@ bool ATransformerActor::MouseTraceByProfile(float TraceDistance, const FName& Pr
 		if (PlayerController->DeprojectMousePositionToWorld(worldLocation, worldDirection))
 		{
 			return TraceByProfile(worldLocation, worldLocation + worldDirection * TraceDistance
-				, ProfileName, IgnoredActors, bClearPreviousSelections, bTraceComponent);
+				, ProfileName, IgnoredActors, bClearPreviousSelections);
 		}
 	}
 	return false;
@@ -141,7 +142,7 @@ bool ATransformerActor::MouseTraceByProfile(float TraceDistance, const FName& Pr
 bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation, const FVector& EndLocation
 	, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 	, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections, bool bTraceComponent)
+	, bool bClearPreviousSelections)
 {
 	if (UWorld* world = GetWorld())
 	{
@@ -158,7 +159,7 @@ bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation, const F
 		if (world->LineTraceMultiByObjectType(OutHits, StartLocation, EndLocation
 			, CollisionObjectQueryParams, CollisionQueryParams))
 		{
-			return HandleTracedObjects(OutHits, bClearPreviousSelections, bTraceComponent);
+			return HandleTracedObjects(OutHits, bClearPreviousSelections);
 		}
 	}
 	return false;
@@ -167,7 +168,7 @@ bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation, const F
 bool ATransformerActor::TraceByChannel(const FVector& StartLocation, const FVector& EndLocation
 	, TEnumAsByte<ECollisionChannel> TraceChannel
 	, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections, bool bTraceComponent)
+	, bool bClearPreviousSelections)
 {
 	if (UWorld* world = GetWorld())
 	{
@@ -178,7 +179,7 @@ bool ATransformerActor::TraceByChannel(const FVector& StartLocation, const FVect
 		if (world->LineTraceMultiByChannel(OutHits, StartLocation, EndLocation
 			, TraceChannel, CollisionQueryParams))
 		{
-			return HandleTracedObjects(OutHits, bClearPreviousSelections, bTraceComponent);
+			return HandleTracedObjects(OutHits, bClearPreviousSelections);
 		}
 	}
 	return false;
@@ -186,7 +187,7 @@ bool ATransformerActor::TraceByChannel(const FVector& StartLocation, const FVect
 
 bool ATransformerActor::TraceByProfile(const FVector& StartLocation, const FVector& EndLocation
 	, const FName& ProfileName, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections, bool bTraceComponent)
+	, bool bClearPreviousSelections)
 {
 	if (UWorld* world = GetWorld())
 	{
@@ -197,7 +198,7 @@ bool ATransformerActor::TraceByProfile(const FVector& StartLocation, const FVect
 		if (world->LineTraceMultiByProfile(OutHits, StartLocation, EndLocation
 			, ProfileName, CollisionQueryParams))
 		{
-			return HandleTracedObjects(OutHits, bClearPreviousSelections, bTraceComponent);
+			return HandleTracedObjects(OutHits, bClearPreviousSelections);
 		}
 	}
 	return false;
@@ -224,7 +225,8 @@ void ATransformerActor::Tick(float DeltaSeconds)
 	Gizmo->UpdateGizmoSpace(CurrentSpaceType); //ToDo: change when this is called to improve performance when a gizmo is there without doing anything
 }
 
-void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVector& RayOrigin, const FVector& RayDirection)
+void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVector& RayOrigin
+	, const FVector& RayDirection)
 {
 	if (!Gizmo.IsValid() || CurrentDomain == ETransformationDomain::TD_None) return;
 
@@ -234,7 +236,6 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 
 	//The delta transform we are actually going to apply (same if there is no Snapping taking place)
 	FTransform actualDeltaTransform = calculatedDeltaTransform;
-
 
 	/* SNAPPING LOGIC */
 	bool* snappingEnabled = SnappingEnabled.Find(CurrentTransformation);
@@ -247,10 +248,10 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 		
 	for (auto& sc : SelectedComponents)
 	{
-		if (!sc) continue;
-		if (bForceMobility || sc->Mobility == EComponentMobility::Type::Movable)
+		if (!sc.Component) continue;
+		if (bForceMobility || sc.Component->Mobility == EComponentMobility::Type::Movable)
 		{
-			const FTransform& componentTransform = sc->GetComponentTransform();
+			const FTransform& componentTransform = sc.Component->GetComponentTransform();
 
 			FQuat deltaRotation = actualDeltaTransform.GetRotation();
 
@@ -258,15 +259,15 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 
 			//DeltaScale is Unrotated Scale to Get Local Scale since World Scale is not supported
 			FVector deltaScale = componentTransform.GetRotation().UnrotateVector(actualDeltaTransform.GetScale3D());
-			
-			if(false == bRotateOnLocalAxis)
+
+			if (false == bRotateOnLocalAxis)
 				deltaLocation = deltaRotation.RotateVector(deltaLocation);
 
 			FTransform newTransform(
 				deltaRotation * componentTransform.GetRotation(),
 				//adding Gizmo Location + prevDeltaLocation (i.e. location from Gizmo to Object after optional Rotating) + deltaTransform Location Offset
-				deltaLocation + Gizmo->GetActorLocation()  + actualDeltaTransform.GetLocation(),
-				deltaScale + componentTransform.GetScale3D());			
+				deltaLocation + Gizmo->GetActorLocation() + actualDeltaTransform.GetLocation(),
+				deltaScale + componentTransform.GetScale3D());
 
 
 			/* SNAPPING LOGIC PER COMPONENT */
@@ -274,27 +275,21 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 				newTransform = Gizmo->GetSnappedTransformPerComponent(componentTransform
 					, newTransform, CurrentDomain, *snappingValue);
 
-			if (sc->Mobility != EComponentMobility::Type::Movable)
-				sc->SetMobility(EComponentMobility::Type::Movable);
+			if (sc.Component->Mobility != EComponentMobility::Type::Movable)
+				sc.Component->SetMobility(EComponentMobility::Type::Movable);
 
-
-			if (GetUFocusableObjects(sc).Num() > 0)
-			{
-				if (bTransformUFocusableObjects)
-					sc->SetWorldTransform(newTransform);
-				CallOnNewDeltaTransformation_Internal(sc, newTransform);
-			}
-			else
-				sc->SetWorldTransform(newTransform); //regardless if its local space, DeltaTransform is already adapted to the Space.
+			sc.SetTransform(newTransform, bTransformUFocusableObjects, bComponentBased);
+			
 		}
 		else
-			UE_LOG(LogRuntimeTransformer, Warning, TEXT("Transform will not affect Component [%s] as it is NOT Moveable!"), *sc->GetName());
-
+			UE_LOG(LogRuntimeTransformer, Warning
+				, TEXT("Transform will not affect Component [%s] as it is NOT Moveable!")
+				, *sc.Component->GetName());
 	}
 }
 
 bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
-	, bool bClearPreviousSelections, bool bTraceComponent)
+	, bool bClearPreviousSelections)
 {
 	//Assign as None just in case we don't hit Any Gizmos
 	ClearDomain();
@@ -323,7 +318,7 @@ bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 	//Only consider First Hit
 	if (HitResults.Num() > 0)
 	{
-		if (bTraceComponent)
+		if (bComponentBased)
 			SelectComponent(Cast<USceneComponent>(HitResults[0].GetComponent()), bClearPreviousSelections);
 		else
 			SelectActor(HitResults[0].GetActor(), bClearPreviousSelections);
@@ -331,6 +326,17 @@ bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 		return true;
 	}
 	return false;
+}
+
+void ATransformerActor::SetComponentBased(bool bIsComponentBased)
+{
+	auto selectedComponents = DeselectAll();
+	bComponentBased = bIsComponentBased;
+	if(bComponentBased)
+		SelectMultipleComponents(selectedComponents, false);
+	else
+		for (auto& c : selectedComponents)
+			SelectActor(c->GetOwner());
 }
 
 void ATransformerActor::SetTransformationType(TEnumAsByte<ETransformationType> TransformationType)
@@ -358,105 +364,134 @@ void ATransformerActor::SetSnappingValue(TEnumAsByte<ETransformationType> Transf
 
 void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& outComponentList, USceneComponent*& outGizmoPlacedComponent) const
 {
-	outComponentList = SelectedComponents;
+	for (auto& i : SelectedComponents)
+		outComponentList.Add(i.Component);
 	if (Gizmo.IsValid())
 		outGizmoPlacedComponent = Gizmo->GetParentComponent();
 }
 
-void ATransformerActor::CloneSelected(bool bSelectNewClones, bool bClearPreviousSelections, bool bCloneComponents)
+void ATransformerActor::CloneSelected(bool bSelectNewClones, bool bClearPreviousSelections)
+{
+	if (bComponentBased)
+		CloneSelected_Components(bSelectNewClones, bClearPreviousSelections);
+	else
+		CloneSelected_Actors(bSelectNewClones, bClearPreviousSelections);
+
+	//if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
+	//	Gizmo->SetTransformProgressState(true, CurrentDomain);
+}
+
+void ATransformerActor::CloneSelected_Actors(bool bSelectNewClones, bool bClearPreviousSelections)
 {
 	UWorld* world = GetWorld();
 	if (!world) return;
 
-	TArray<USceneComponent*> newClones;
-
-	TMap<USceneComponent*, USceneComponent*> cloneParentMap; //cloned component to original parents
-	TMap<USceneComponent*, USceneComponent*> originalClonedMap; //cloned components map (original, clone)
-
-	TSet<AActor*> clonedActors; //original actors stored
-	
-	for (auto& c : SelectedComponents)
+	TArray<AActor*> actorsToClone; //an array to keep order
+	for (auto& sc : SelectedComponents)
 	{
-		if (!c) continue;
-		AActor* owner = c->GetOwner();
+		if(sc.Component)
+			actorsToClone.Add(sc.Component->GetOwner());
+	}
+
+	TArray<AActor*> actorClones;
+	TSet<AActor*>	actorsProcessed;
+	
+	if (bClearPreviousSelections)
+		DeselectAll(false);
+
+	for (auto& templateActor : actorsToClone)
+	{
+		if (!templateActor) continue;
+		bool bAlreadyProcessed;
+		actorsProcessed.Add(templateActor, &bAlreadyProcessed);
+		if (bAlreadyProcessed) continue;
+
+		FTransform spawnTransform;
+		FActorSpawnParameters spawnParams;
+		spawnParams.Template = templateActor;
+		if (AActor* actor = world->SpawnActor(templateActor->GetClass(), &spawnTransform, spawnParams))
+		{
+			if (bSelectNewClones) SelectActor(actor, false);
+		}
+	}
+
+}
+
+void ATransformerActor::CloneSelected_Components(bool bSelectNewClones, bool bClearPreviousSelections)
+{
+	UWorld* world = GetWorld();
+	if (!world) return;
+
+	TMap<USceneComponent*, USceneComponent*> OcCc; //Original component - Clone component
+	TMap<USceneComponent*, USceneComponent*> CcOp; //Clone component - Original parent
+
+	auto Components = SelectedComponents;
+
+	if (bClearPreviousSelections)
+		DeselectAll();
+
+	//clone components phase
+	for (auto& sc : Components)
+	{
+		if (!sc.Component) continue;
+		AActor* owner = sc.Component->GetOwner();
 		if (!owner) continue;
-
-		USceneComponent* clone = nullptr;
-		if (bCloneComponents && c != owner->GetRootComponent())
+		if (USceneComponent* clone = Cast<USceneComponent>(StaticDuplicateObject(sc.Component, owner)))
 		{
-			//for components, we have to manually create it using duplicateobject
-			clone = Cast<USceneComponent>(StaticDuplicateObject(c, owner));
-			if (clone)
-			{
-				//manually call these events
-				PostCreateBlueprintComponent(clone);
-				clone->OnComponentCreated();
-				originalClonedMap.Add(c, clone);
-				cloneParentMap.Add(clone, c->GetAttachParent());
-				clone->SetRelativeTransform(c->GetRelativeTransform());
-			}
-		} 
+			//manually call these events
+			PostCreateBlueprintComponent(clone);
+			clone->OnComponentCreated();
+			clone->SetRelativeTransform(sc.Component->GetRelativeTransform());
 
-		else
-		{
-			bool bAlreadyClonedActor;
-			clonedActors.Add(owner, &bAlreadyClonedActor);
-			if (bAlreadyClonedActor) continue; // if already cloned, don't continue!
+			//Add to these two maps for reparenting in next phase
+			OcCc.Add(sc.Component, clone); //Original component - Clone component
 
-			FTransform spawnTransform; //leave it as is since template will also handle the transform
-			FActorSpawnParameters spawnParams;
-			spawnParams.Template = owner;
-			if (AActor* cloneActor = world->SpawnActor(owner->GetClass(), &spawnTransform, spawnParams))
-			{
-				clone = cloneActor->GetRootComponent();
-				if (bCloneComponents)
-				{
-					originalClonedMap.Add(c, clone);
-					//cloneParentMap.Add(clone, c->GetAttachParent());
-
-					TArray<USceneComponent*> children;
-					clone->GetChildrenComponents(true, children);
-					for (auto& child : children)
-						child->DestroyComponent();
-				}
-			}
+			if (sc.Component == owner->GetRootComponent())
+				CcOp.Add(clone, owner->GetRootComponent()); //this will cause a loop in the maps, so we must check for this!
+			else 
+				CcOp.Add(clone, sc.Component->GetAttachParent()); //Clone component - Original parent
 		}
-
-		if (clone) 
-			newClones.Add(clone);
 	}
 
-
-	//attachment time & registry time for Components
-	for (auto& cc : cloneParentMap)
+	//reparenting phase
+	FAttachmentTransformRules attachmentRule(EAttachmentRule::KeepWorld, false);
+	for (auto& cp : CcOp)
 	{
-		USceneComponent* parentToAttach = cc.Value;//originalparent
+		//original parent
+		USceneComponent* parent = cp.Value; 
 
-		if (USceneComponent** cloneParent = originalClonedMap.Find(parentToAttach))
+		//find if we cloned the original parent
+		USceneComponent** cloneParent = OcCc.Find(parent); 
+
+		if (cloneParent)
 		{
-			parentToAttach = *cloneParent; //cloned parent
-			if (AActor* parentOwner = (*cloneParent)->GetOwner())
-				cc.Key->Rename(0, parentOwner); //add to the cloned parent to completely remove relevancy with original parent
-
-			// remove the child from selected if we have a parent that is cloned 
-			// having a child selected with its parent will double the transformation of that child
-			newClones.Remove(cc.Key); 
-			//call the unfocus since since we are cloning and there might be a set property that we don't want			
-			CallUnfocus_Internal(cc.Key);	
+			if (*cloneParent != cp.Key) //make sure comp is not its own parent
+				parent = *cloneParent;
+		}
+		else 
+		{
+			//couldn't find its parent, so find the parent of the parent and see if it's in the list.
+			//repeat until found or root is reached
+			AActor* actorOwner = parent->GetOwner();
+			while (1)
+			{
+				cloneParent = OcCc.Find(parent->GetAttachParent());
+				if (cloneParent || parent == actorOwner->GetRootComponent()) //root reached..
+				{
+					parent = *cloneParent;
+					break;
+				}
+				parent = parent->GetAttachParent();
+			}
 		}
 
-		FAttachmentTransformRules attachmentRule(EAttachmentRule::KeepRelative, false);
-		cc.Key->AttachToComponent(parentToAttach, attachmentRule);
-		cc.Key->RegisterComponent();
+		cp.Key->AttachToComponent(parent, attachmentRule);
+		cp.Key->RegisterComponent();
+
+		if(parent == cp.Value) //check if the parent of the cloned is original (means it's topmost)
+			SelectComponent(cp.Key, false); //only select those that have an "original parent". 
+		//Selecting childs and parents can cause weird issues so only select the topmost clones (those that do not have cloned parents!)
 	}
-
-	if (bSelectNewClones)
-		SelectMultipleComponents(newClones, bClearPreviousSelections);
-
-	if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
-		Gizmo->SetTransformProgressState(true, CurrentDomain);
-	
-
 }
 
 void ATransformerActor::SelectComponent(class USceneComponent* Component, bool bClearPreviousSelections)
@@ -543,98 +578,75 @@ void ATransformerActor::DeselectActor(AActor* Actor)
 
 TArray<USceneComponent*> ATransformerActor::DeselectAll(bool bDestroyDeselected)
 {
+	TArray<USceneComponent*> outComponents;
+
 	auto components = SelectedComponents;
 	for (auto& c : components)
-		DeselectComponent_Internal(c);
+	{
+		outComponents.Add(c.Component);
+		DeselectComponent(c.Component);
+	}
+
+	SelectedComponents.Empty();
 	UpdateGizmoPlacement();
 
 	if (bDestroyDeselected)
 	{
 		for (auto& c : components)
-			c->DestroyComponent();
-		components.Empty();
+		{
+			if (!IsValid(c.Component)) continue; //a component that was in the same actor destroyed will be pending kill
+			if (AActor* actor = c.Component->GetOwner())
+			{
+				//We destroy the actor if no components are left to destroy, or the system is currently ActorBased
+				if (bComponentBased && actor->GetComponents().Num() > 1)
+					c.Component->DestroyComponent(true);
+				else
+					actor->Destroy();
+			}
+		}
 	}
 
-	return components;
+	return outComponents;
 }
 
 void ATransformerActor::SelectComponent_Internal(USceneComponent* Component)
 {
-	if (!Component) return;
+	//if (!Component) return; //assumes that previous have checked, since this is Internal.
+
 	int32 Index = SelectedComponents.Find(Component);
 
 	if (INDEX_NONE == Index) //Component is not in list
 	{
-		CallFocus_Internal(Component);
-		SelectedComponents.Add(Component);
+		SelectedComponents.Emplace(Component);
+		bool bImplementsInterface;
+		SelectedComponents.Last().Select(bComponentBased, &bImplementsInterface);
+		OnComponentSelectionChange(Component, true, bImplementsInterface);
 	}
 	else if (bToggleSelectedInMultiSelection)
-		DeselectComponentByIndex_Internal(Component, Index);
+		DeselectComponentAtIndex_Internal(Component, Index);
 }
 
 void ATransformerActor::DeselectComponent_Internal(USceneComponent* Component)
 {
+	//if (!Component) return; //assumes that previous have checked, since this is Internal.
+
 	int32 Index = SelectedComponents.Find(Component);
-	if (Index != INDEX_NONE)
-		DeselectComponentByIndex_Internal(Component, Index);
+	if (INDEX_NONE != Index)
+		DeselectComponentAtIndex_Internal(Component, Index);
 }
 
-void ATransformerActor::DeselectComponentByIndex_Internal(USceneComponent* Component, int32 Index)
+void ATransformerActor::DeselectComponentAtIndex_Internal(USceneComponent* Component, int32 Index)
 {
-	CallUnfocus_Internal(Component);
-	SelectedComponents.RemoveAt(Index);
-}
+	//if (!Component) return; //assumes that previous have checked, since this is Internal.
 
-void ATransformerActor::CallFocus_Internal(USceneComponent* Component)
-{
-	auto focusableObjects = GetUFocusableObjects(Component);
-
-	if (focusableObjects.Num() > 0)
+	if (SelectedComponents.IsValidIndex(Index))
 	{
-		for (auto& obj : focusableObjects)
-			IFocusableObject::Execute_Focus(obj, Component);
+		bool bImplementsInterface;
+		SelectedComponents[Index].Deselect(bComponentBased, &bImplementsInterface);
+		SelectedComponents.RemoveAt(Index);
+		OnComponentSelectionChange(Component, false, bImplementsInterface);
 	}
-	else
-		OnComponentSelectionChange(Component, true);
 
-
-}
-
-void ATransformerActor::CallUnfocus_Internal(USceneComponent* Component)
-{
-	auto focusableObjects = GetUFocusableObjects(Component);
-	if (focusableObjects.Num() > 0)
-	{
-		for (auto& obj : focusableObjects)
-			IFocusableObject::Execute_Unfocus(obj, Component);
-	}
-	else
-		OnComponentSelectionChange(Component, false);
-}
-
-void ATransformerActor::CallOnNewDeltaTransformation_Internal(USceneComponent* Component, const FTransform& DeltaTransform)
-{
-	auto focusableObjects = GetUFocusableObjects(Component);
-	for (auto& obj : focusableObjects)
-		IFocusableObject::Execute_OnNewDeltaTransformation(obj, Component, DeltaTransform);
-}
-
-TArray<UObject*> ATransformerActor::GetUFocusableObjects(USceneComponent* Component) const
-{
-	TArray<UObject*> focusableObjects;
-	if (!Component) return focusableObjects;
-
-	//Add to List if the Component itself Implements our Interface. 
-	if (Component->Implements<UFocusableObject>())
-		focusableObjects.Add(Component);
-
-	//Add Owner Actor to List if it also Implements our Interface. 
-	if (AActor* ComponentOwner = Component->GetOwner())
-	{
-		if (ComponentOwner->Implements<UFocusableObject>())
-			focusableObjects.Add(ComponentOwner);
-	}
-	return focusableObjects;
 }
 
 void ATransformerActor::SetGizmo()
@@ -704,15 +716,12 @@ void ATransformerActor::UpdateGizmoPlacement()
 	switch (GizmoPlacement)
 	{
 	case EGizmoPlacement::GP_OnFirstSelection:
-		Gizmo->AttachToComponent(SelectedComponents[0], attachmentRules);
+		Gizmo->AttachToComponent(SelectedComponents[0].Component, attachmentRules);
 		break;
 	case EGizmoPlacement::GP_OnLastSelection:
-		Gizmo->AttachToComponent(SelectedComponents.Last(), attachmentRules);
+		Gizmo->AttachToComponent(SelectedComponents.Last().Component, attachmentRules);
 		break;
 	}
 
 	Gizmo->UpdateGizmoSpace(CurrentSpaceType);
 }
-
-
-

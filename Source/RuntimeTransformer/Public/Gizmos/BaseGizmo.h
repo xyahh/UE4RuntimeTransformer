@@ -22,12 +22,10 @@ public:
 
 	virtual void UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType);
 
-	virtual bool SupportsWorldSpace() const { return true; };
-
 	//Base Gizmo does not affect anything and returns No Delta Transform.
 	// This func is overriden by each Transform Gizmo
 	virtual FTransform GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
-		, const FVector& RayEndPoint, TEnumAsByte<ETransformationDomain> Domain);
+		, const FVector& RayEvndPoint, TEnumAsByte<ETransformationDomain> Domain);
 
 	/**
 	 * Scales the Gizmo Scene depending on a Reference Point
@@ -70,46 +68,6 @@ protected:
 	//should be called at the end of the GetDeltaTransformation Implemenation
 	void UpdateRays(const FVector& RayStart, const FVector& RayEnd);
 
-protected:
-
-
-	// Used to calculate the distance the rays have travelled
-	FVector PreviousRayStartPoint;
-	FVector PreviousRayEndPoint;
-
-	//bool to check whether the PrevRay vectors have been set
-	bool bIsPrevRayValid;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gizmo")
-	float GizmoSceneScaleFactor;
-
-	/* The Radius of the Arc (FOV) that the Camera covers. The bigger the value, the smaller the Gizmo would look. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gizmo")
-	float CameraArcRadius;
-
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class USceneComponent* RootScene;
-
-	/* Scene Component that will go Under the Root Scene
-	 * This is so that we can Scale all the things under it without Scaling the Actor itself (i.e. root component)
-	*/
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class USceneComponent* ScalingScene;
-
-	// The Hit Box for the X-Axis Direction Transform
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class UBoxComponent* X_AxisBox;
-
-	// The Hit Box for the X-Axis Direction Transform
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class UBoxComponent* Y_AxisBox;
-
-	// The Hit Box for the X-Axis Direction Transform
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class UBoxComponent* Z_AxisBox;
-
-
 	/**
 	 * Adds or modifies an entry to the DomainMap.
 	*/
@@ -132,12 +90,50 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FGizmoStateChangedDelegate OnGizmoStateChange;
 
+protected:
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class USceneComponent* RootScene;
+
+	/* Scene Component that will go Under the Root Scene
+	 * This is so that we can Scale all the things under it without Scaling the Actor itself (i.e. root component)
+	*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class USceneComponent* ScalingScene;
+
+	// The Hit Box for the X-Axis Direction Transform
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class UBoxComponent* X_AxisBox;
+
+	// The Hit Box for the X-Axis Direction Transform
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class UBoxComponent* Y_AxisBox;
+
+	// The Hit Box for the X-Axis Direction Transform
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class UBoxComponent* Z_AxisBox;
+
+	// Used to calculate the distance the rays have travelled
+	FVector PreviousRayStartPoint;
+	FVector PreviousRayEndPoint;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gizmo")
+	float GizmoSceneScaleFactor;
+
+	/* The Radius of the Arc (FOV) that the Camera covers. The bigger the value, the smaller the Gizmo would look. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gizmo")
+	float CameraArcRadius;
+
 private:
+	// Maps the Box Component to their Respective Domain
+	TMap<class UShapeComponent*, TEnumAsByte<ETransformationDomain>> DomainMap;
 
 	//Whether Transform is in Progress or Not 
 	bool bTransformInProgress;
 
-	// Maps the Box Component to their Respective Domain
-	TMap<class UShapeComponent*, TEnumAsByte<ETransformationDomain>> DomainMap;
+protected:
+
+	//bool to check whether the PrevRay vectors have been set
+	bool bIsPrevRayValid;
 };
 
