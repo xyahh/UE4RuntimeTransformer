@@ -7,8 +7,11 @@ Plugin targeted for both :
 - Users that want to customize absolutely everything, from how the Gizmo looks like, to how it behaves and how it interacts with different objects
 - Users that just want to quickly implement a Gizmo System in their game without having to customize much!
 
-Documentation
-https://rtt.xyah.games/
+# Information
+
+Contact juan@xyah.games
+Sample project https://github.com/xyahh/UE4RuntimeTransformer_Example
+Documentation https://rtt.xyah.games/
 
 # Version 1.0 Features
 
