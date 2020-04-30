@@ -23,7 +23,7 @@ public:
 	// Returns a Snapped Transform based on how much has been accumulated, the Delta Transform and Snapping Value
 	virtual FTransform GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
 		, const FTransform& DeltaTransform
-		, TEnumAsByte<ETransformationDomain> Domain
+		, ETransformationDomain Domain
 		, float SnappingValue) const override;
 
 protected:
@@ -32,8 +32,10 @@ protected:
 	virtual FVector CalculateGizmoSceneScale(const FVector& ReferenceLocation, const FVector& ReferenceLookDirection
 		, float FieldOfView) override;
 
-	virtual FTransform GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
-		, const FVector& RayEndPoint,  TEnumAsByte<ETransformationDomain> Domain) override;
+	virtual FTransform GetDeltaTransform(const FVector& LookingVector
+		, const FVector& RayStartPoint
+		, const FVector& RayEndPoint
+		,  ETransformationDomain Domain) override;
 
 private:
 

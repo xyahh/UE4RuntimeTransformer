@@ -26,14 +26,15 @@ AScaleGizmo::AScaleGizmo()
 
 }
 
-void AScaleGizmo::UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType)
+void AScaleGizmo::UpdateGizmoSpace(ESpaceType SpaceType)
 {
 	//Force to always be Local
 	SetActorRelativeRotation(FQuat(EForceInit::ForceInit));
 }
 
-FTransform AScaleGizmo::GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint, const FVector& RayEndPoint
-	, TEnumAsByte<ETransformationDomain> Domain)
+FTransform AScaleGizmo::GetDeltaTransform(const FVector& LookingVector
+	, const FVector& RayStartPoint, const FVector& RayEndPoint
+	, ETransformationDomain Domain)
 {
 	FTransform deltaTransform;
 	deltaTransform.SetScale3D(FVector::ZeroVector);
@@ -126,7 +127,7 @@ FTransform AScaleGizmo::GetDeltaTransform(const FVector& LookingVector, const FV
 
 FTransform AScaleGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
 	, const FTransform& DeltaTransform
-	, TEnumAsByte<ETransformationDomain> Domain
+	, ETransformationDomain Domain
 	, float SnappingValue) const
 {
 	if (SnappingValue == 0.f) return DeltaTransform;
@@ -157,7 +158,7 @@ FTransform AScaleGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTra
 }
 
 FTransform AScaleGizmo::GetSnappedTransformPerComponent(const FTransform& OldComponentTransform
-	, const FTransform& NewComponentTransform, TEnumAsByte<ETransformationDomain> Domain
+	, const FTransform& NewComponentTransform, ETransformationDomain Domain
 	, float SnappingValue) const
 {
 

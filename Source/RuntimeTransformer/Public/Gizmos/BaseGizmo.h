@@ -20,12 +20,12 @@ public:
 
 	virtual ETransformationType GetGizmoType() const { return ETransformationType::TT_NoTransform; }
 
-	virtual void UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType);
+	virtual void UpdateGizmoSpace(ESpaceType SpaceType);
 
 	//Base Gizmo does not affect anything and returns No Delta Transform.
 	// This func is overriden by each Transform Gizmo
 	virtual FTransform GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
-		, const FVector& RayEvndPoint, TEnumAsByte<ETransformationDomain> Domain);
+		, const FVector& RayEvndPoint, ETransformationDomain Domain);
 
 	/**
 	 * Scales the Gizmo Scene depending on a Reference Point
@@ -38,13 +38,13 @@ public:
 	void ScaleGizmoScene(const FVector& ReferenceLocation, const FVector& ReferenceLookDirection, float FieldOfView = 90.f);
 
 	UFUNCTION(BlueprintCallable)
-	TEnumAsByte<ETransformationDomain> GetTransformationDomain(class USceneComponent* ComponentHit) const;
+	ETransformationDomain GetTransformationDomain(class USceneComponent* ComponentHit) const;
 
 	// Returns a Snapped Transform based on how much has been accumulated, the Delta Transform and Snapping Value
 	// Also changes the Accumulated Transform based on how much was snapped
 	virtual FTransform GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
 		, const FTransform& DeltaTransform
-		, TEnumAsByte<ETransformationDomain> Domain
+		, ETransformationDomain Domain
 		, float SnappingValue) const ;
 
 	// Snapped Transform per Component is used when we need Absolute Snapping
@@ -52,7 +52,7 @@ public:
 	// for example, Object Scale (1) and Snapping of (5). Snapping sequence should be 5, 10... and not 6, 11...
 	virtual FTransform GetSnappedTransformPerComponent(const FTransform& OldComponentTransform
 		, const FTransform& NewComponentTransform
-		, TEnumAsByte<ETransformationDomain> Domain
+		, ETransformationDomain Domain
 		, float SnappingValue) const {	return NewComponentTransform; }
 
 protected:
@@ -72,12 +72,14 @@ protected:
 	 * Adds or modifies an entry to the DomainMap.
 	*/
 	UFUNCTION(BlueprintCallable)
-	void RegisterDomainComponent(class USceneComponent* Component, TEnumAsByte<ETransformationDomain> Domain);
+	void RegisterDomainComponent(class USceneComponent* Component
+		, ETransformationDomain Domain);
 
 public:
 
 	UFUNCTION(BlueprintCallable)
-	void SetTransformProgressState(bool bInProgress, TEnumAsByte<ETransformationDomain> CurrentDomain);
+	void SetTransformProgressState(bool bInProgress
+		, ETransformationDomain CurrentDomain);
 
 	UFUNCTION(BlueprintCallable)
 	bool GetTransformProgressState() const { return bTransformInProgress; }
@@ -126,7 +128,7 @@ protected:
 
 private:
 	// Maps the Box Component to their Respective Domain
-	TMap<class UShapeComponent*, TEnumAsByte<ETransformationDomain>> DomainMap;
+	TMap<class UShapeComponent*, ETransformationDomain> DomainMap;
 
 	//Whether Transform is in Progress or Not 
 	bool bTransformInProgress;

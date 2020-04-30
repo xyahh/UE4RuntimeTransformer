@@ -24,8 +24,10 @@ ATranslationGizmo::ATranslationGizmo()
 
 }
 
-FTransform ATranslationGizmo::GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
-	, const FVector& RayEndPoint,  TEnumAsByte<ETransformationDomain> Domain)
+FTransform ATranslationGizmo::GetDeltaTransform(const FVector& LookingVector
+	, const FVector& RayStartPoint
+	, const FVector& RayEndPoint
+	, ETransformationDomain Domain)
 {
 	FTransform deltaTransform;
 	deltaTransform.SetScale3D(FVector::ZeroVector); //used so that the default FVector(1.f, 1.f, 1.f) does not affect further scaling
@@ -114,7 +116,7 @@ FTransform ATranslationGizmo::GetDeltaTransform(const FVector& LookingVector, co
 
 FTransform ATranslationGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
 	, const FTransform& DeltaTransform
-	, TEnumAsByte<ETransformationDomain> Domain
+	, ETransformationDomain Domain
 	, float SnappingValue) const
 {
 	if (SnappingValue == 0.f) return DeltaTransform;

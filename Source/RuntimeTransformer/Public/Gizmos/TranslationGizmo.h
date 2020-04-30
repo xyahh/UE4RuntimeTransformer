@@ -20,13 +20,14 @@ public:
 
 	virtual ETransformationType GetGizmoType() const final { return ETransformationType::TT_Translation; }
 
-	virtual FTransform GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
-		, const FVector& RayEndPoint,  TEnumAsByte<ETransformationDomain> Domain) override;
+	virtual FTransform GetDeltaTransform(const FVector& LookingVector
+		, const FVector& RayStartPoint
+		, const FVector& RayEndPoint,  ETransformationDomain Domain) override;
 
 	// Returns a Snapped Transform based on how much has been accumulated, the Delta Transform and Snapping Value
 	virtual FTransform GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
 		, const FTransform& DeltaTransform
-		, TEnumAsByte<ETransformationDomain> Domain
+		, ETransformationDomain Domain
 		, float SnappingValue) const override;
 
 protected:

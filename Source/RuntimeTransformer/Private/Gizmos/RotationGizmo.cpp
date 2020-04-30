@@ -7,7 +7,8 @@ ARotationGizmo::ARotationGizmo()
 	PreviousRotationViewScale = FVector::OneVector;
 }
 
-FVector ARotationGizmo::CalculateGizmoSceneScale(const FVector& ReferenceLocation, const FVector& ReferenceLookDirection, float FieldOfView)
+FVector ARotationGizmo::CalculateGizmoSceneScale(const FVector& ReferenceLocation
+	, const FVector& ReferenceLookDirection, float FieldOfView)
 {
 	FVector calculatedScale = Super::CalculateGizmoSceneScale(ReferenceLocation, ReferenceLookDirection, FieldOfView);
 	FVector currentRotationViewScale = PreviousRotationViewScale;
@@ -37,7 +38,7 @@ FVector ARotationGizmo::CalculateGizmoSceneScale(const FVector& ReferenceLocatio
 }
 
 FTransform ARotationGizmo::GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
-	, const FVector& RayEndPoint,  TEnumAsByte<ETransformationDomain> Domain)
+	, const FVector& RayEndPoint,  ETransformationDomain Domain)
 {
 	FTransform deltaTransform;
 	deltaTransform.SetScale3D(FVector::ZeroVector);
@@ -88,7 +89,7 @@ FTransform ARotationGizmo::GetDeltaTransform(const FVector& LookingVector, const
 
 FTransform ARotationGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
 	, const FTransform& DeltaTransform
-	, TEnumAsByte<ETransformationDomain> Domain
+	, ETransformationDomain Domain
 	, float SnappingValue) const
 {
 	if (SnappingValue == 0.f) return DeltaTransform;

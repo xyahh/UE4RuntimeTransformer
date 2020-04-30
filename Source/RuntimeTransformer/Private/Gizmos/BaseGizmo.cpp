@@ -43,7 +43,7 @@ ABaseGizmo::ABaseGizmo()
 	bIsPrevRayValid = false;
 }
 
-void ABaseGizmo::UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType)
+void ABaseGizmo::UpdateGizmoSpace(ESpaceType SpaceType)
 {
 	switch (SpaceType)
 	{
@@ -59,8 +59,9 @@ void ABaseGizmo::UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType)
 //Base Gizmo does not affect anything and returns No Delta Transform.
 // This func is overriden by each Transform Gizmo
 
-FTransform ABaseGizmo::GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint, const FVector& RayEndPoint
-	,  TEnumAsByte<ETransformationDomain> Domain)
+FTransform ABaseGizmo::GetDeltaTransform(const FVector& LookingVector
+	, const FVector& RayStartPoint, const FVector& RayEndPoint
+	,  ETransformationDomain Domain)
 {
 	FTransform deltaTransform;
 	deltaTransform.SetScale3D(FVector::ZeroVector);
@@ -75,20 +76,21 @@ void ABaseGizmo::ScaleGizmoScene(const FVector& ReferenceLocation, const FVector
 		ScalingScene->SetWorldScale3D(Scale);
 }
 
-FTransform ABaseGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform, const FTransform& DeltaTransform
-	, TEnumAsByte<ETransformationDomain> Domain
+FTransform ABaseGizmo::GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
+	, const FTransform& DeltaTransform
+	, ETransformationDomain Domain
 	, float SnappingValue) const
 {
 	return DeltaTransform;
 }
 
-TEnumAsByte<ETransformationDomain> ABaseGizmo::GetTransformationDomain(USceneComponent* ComponentHit) const
+ETransformationDomain ABaseGizmo::GetTransformationDomain(USceneComponent* ComponentHit) const
 {
 	if (!ComponentHit) return ETransformationDomain::TD_None;
 
 	if (UShapeComponent* ShapeComponent = Cast<UShapeComponent>(ComponentHit))
 	{
-		if (const TEnumAsByte<ETransformationDomain>* pDomain = DomainMap.Find(ShapeComponent))
+		if (const ETransformationDomain* pDomain = DomainMap.Find(ShapeComponent))
 			return *pDomain;
 	}
 	else
@@ -118,7 +120,8 @@ void ABaseGizmo::UpdateRays(const FVector& RayStart, const FVector& RayEnd)
 	bIsPrevRayValid = true;
 }
 
-void ABaseGizmo::RegisterDomainComponent(USceneComponent* Component, TEnumAsByte<ETransformationDomain> Domain)
+void ABaseGizmo::RegisterDomainComponent(USceneComponent* Component
+	, ETransformationDomain Domain)
 {
 	if (!Component) return;
 
@@ -128,7 +131,8 @@ void ABaseGizmo::RegisterDomainComponent(USceneComponent* Component, TEnumAsByte
 		UE_LOG(LogRuntimeTransformer, Warning, TEXT("Failed to Register Component! Component is not a Shape Component %s"), *Component->GetName());
 }
 
-void ABaseGizmo::SetTransformProgressState(bool bInProgress, TEnumAsByte<ETransformationDomain> CurrentDomain)
+void ABaseGizmo::SetTransformProgressState(bool bInProgress
+	, ETransformationDomain CurrentDomain)
 {
 	if (bInProgress != bTransformInProgress)
 	{

@@ -20,20 +20,22 @@ public:
 
 	virtual ETransformationType GetGizmoType() const final { return ETransformationType::TT_Scale; }
 
-	virtual void UpdateGizmoSpace(TEnumAsByte<ESpaceType> SpaceType);
+	virtual void UpdateGizmoSpace(ESpaceType SpaceType);
 
-	virtual FTransform GetDeltaTransform(const FVector& LookingVector, const FVector& RayStartPoint
-		, const FVector& RayEndPoint, TEnumAsByte<ETransformationDomain> Domain) override;
+	virtual FTransform GetDeltaTransform(const FVector& LookingVector
+		, const FVector& RayStartPoint
+		, const FVector& RayEndPoint
+		, ETransformationDomain Domain) override;
 
 	// Returns a Snapped Transform based on how much has been accumulated, the Delta Transform and Snapping Value
 	virtual FTransform GetSnappedTransform(FTransform& outCurrentAccumulatedTransform
 		, const FTransform& DeltaTransform
-		, TEnumAsByte<ETransformationDomain> Domain
+		, ETransformationDomain Domain
 		, float SnappingValue) const override;
 
 	virtual FTransform GetSnappedTransformPerComponent(const FTransform& OldComponentTransform
 		, const FTransform& NewComponentTransform
-		, TEnumAsByte<ETransformationDomain> Domain
+		, ETransformationDomain Domain
 		, float SnappingValue) const override;
 
 protected:
