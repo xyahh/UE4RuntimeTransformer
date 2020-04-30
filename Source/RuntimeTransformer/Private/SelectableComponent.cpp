@@ -47,7 +47,7 @@ void FSelectableComponent::Select(bool bComponentBase, bool* bImplementsUFocusab
 	if (focusableObject)
 		IFocusableObject::Execute_Focus(focusableObject, Component, bComponentBase);
 	if (bImplementsUFocusable)
-		*bImplementsUFocusable = focusableObject;
+		*bImplementsUFocusable = !!focusableObject;
 }
 
 void FSelectableComponent::Deselect(bool bComponentBase, bool* bImplementsUFocusable)
@@ -56,5 +56,5 @@ void FSelectableComponent::Deselect(bool bComponentBase, bool* bImplementsUFocus
 	if (focusableObject)
 		IFocusableObject::Execute_Unfocus(focusableObject, Component, bComponentBase);
 	if (bImplementsUFocusable)
-		*bImplementsUFocusable = focusableObject;
+		*bImplementsUFocusable = !!focusableObject;
 }

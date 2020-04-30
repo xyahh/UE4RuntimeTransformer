@@ -8,6 +8,8 @@
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 
+#include "Kismet/GameplayStatics.h"
+
 /* Gizmos */
 #include "Gizmos/BaseGizmo.h"
 #include "Gizmos/TranslationGizmo.h"
@@ -17,13 +19,19 @@
 /* Interface */
 #include "FocusableObject.h"
 
+#define CLIENT_CHECK_IGNORE_LIST(FuncName, ListVarName) { if (ListVarName.Num() > 0) \
+UE_LOG(LogRuntimeTransformer, Warning\
+	, TEXT("%s caller is not Authority. Emptying Ignored Actor List"), TEXT(#FuncName));\
+ListVarName.Empty(); } //Since it's not server, we're clearing the Ignored Actors
+
 
 // Sets default values
 ATransformerActor::ATransformerActor()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
+	bReplicates			= true;
+	bReplicateMovement = true;
 	GizmoPlacement			= EGizmoPlacement::GP_OnLastSelection;
 	CurrentTransformation = ETransformationType::TT_Translation;
 	CurrentDomain		= ETransformationDomain::TD_None;
@@ -40,6 +48,16 @@ ATransformerActor::ATransformerActor()
 
 }
 
+#include "Net/UnrealNetwork.h"
+
+void ATransformerActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ATransformerActor, CurrentDomain);
+	DOREPLIFETIME(ATransformerActor, CurrentTransformation);
+	DOREPLIFETIME(ATransformerActor, GizmoPlacement);
+}
+
 void ATransformerActor::BeginPlay()
 {
 	Super::BeginPlay();
@@ -53,30 +71,52 @@ void ATransformerActor::SetPlayerController(APlayerController* Controller)
 	PlayerController = Controller;
 }
 
-void ATransformerActor::SetSpaceType(TEnumAsByte<ESpaceType> Type)
+void ATransformerActor::SetSpaceType(ESpaceType Type)
 {
 	CurrentSpaceType = Type;
 	SetGizmo();
 }
 
-TEnumAsByte<ETransformationDomain> ATransformerActor::GetCurrentDomain(bool& TransformInProgress) const
+ETransformationDomain ATransformerActor::GetCurrentDomain(bool& TransformInProgress) const
 {
 	TransformInProgress = (CurrentDomain != ETransformationDomain::TD_None);
 	return CurrentDomain;
 }
 
+/****** Clear Domain ***********************************************************************/
+
 void ATransformerActor::ClearDomain()
 {
-	CurrentDomain = ETransformationDomain::TD_None;
-
-	//Clear the Accumulated tranform when we stop Transforming
+	if (Role != ROLE_Authority)
+	{
+		ServerClearDomain();
+		//Clear the Accumulated tranform when we stop Transforming
+		ServerFinishUpdating(AccumulatedNetDeltaTransform);
+	}
+	
+	
 	ResetAccumulatedTransform();
 
-	if (Gizmo.IsValid()) 
+
+	CurrentDomain = ETransformationDomain::TD_None;
+	
+	if (Gizmo.IsValid())
 		Gizmo->SetTransformProgressState(false, CurrentDomain);
 }
 
-UClass* ATransformerActor::GetGizmoClass(TEnumAsByte<ETransformationType> TransformationType) const /* private */
+bool ATransformerActor::ServerClearDomain_Validate()
+{
+	return true;
+}
+
+void ATransformerActor::ServerClearDomain_Implementation()
+{
+	ClearDomain();
+}
+
+/*******************************************************************************************/
+
+UClass* ATransformerActor::GetGizmoClass_ServerInternal(ETransformationType TransformationType) const /* private */
 {
 	//Assign correct Gizmo Class depending on given Transformation
 	switch (CurrentTransformation)
@@ -90,11 +130,15 @@ UClass* ATransformerActor::GetGizmoClass(TEnumAsByte<ETransformationType> Transf
 
 void ATransformerActor::ResetAccumulatedTransform()
 {
-	AccumulatedDeltaTransform = FTransform();
-	AccumulatedDeltaTransform.SetScale3D(FVector::ZeroVector); //Set Scale to 0 since def makes it 1.f, 1.f, 1.f
+	AccumulatedSnappedDeltaTransform = FTransform();
+	AccumulatedSnappedDeltaTransform.SetScale3D(FVector::ZeroVector); //Set Scale to 0 since def makes it 1.f, 1.f, 1.f
+
+	AccumulatedNetDeltaTransform = FTransform();
+	AccumulatedNetDeltaTransform.SetScale3D(FVector::ZeroVector);
 }
 
-bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
+bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance
+	, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 	, TArray<AActor*> IgnoredActors, bool bClearPreviousSelections)
 {
 	if (PlayerController)
@@ -109,7 +153,8 @@ bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance, TArray<TEnu
 	return false;
 }
 
-bool ATransformerActor::MouseTraceByChannel(float TraceDistance, TEnumAsByte<ECollisionChannel> TraceChannel, TArray<AActor*> IgnoredActors
+bool ATransformerActor::MouseTraceByChannel(float TraceDistance
+	, TEnumAsByte<ECollisionChannel> TraceChannel, TArray<AActor*> IgnoredActors
 	, bool bClearPreviousSelections)
 {
 	if (PlayerController)
@@ -124,7 +169,8 @@ bool ATransformerActor::MouseTraceByChannel(float TraceDistance, TEnumAsByte<ECo
 	return false;
 }
 
-bool ATransformerActor::MouseTraceByProfile(float TraceDistance, const FName& ProfileName, TArray<AActor*> IgnoredActors
+bool ATransformerActor::MouseTraceByProfile(float TraceDistance, const FName& ProfileName
+	, TArray<AActor*> IgnoredActors
 	, bool bClearPreviousSelections)
 {
 	if (PlayerController)
@@ -139,11 +185,23 @@ bool ATransformerActor::MouseTraceByProfile(float TraceDistance, const FName& Pr
 	return false;
 }
 
-bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation, const FVector& EndLocation
-	, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
+
+/****** Trace by Object Types ***************************************************************/
+
+bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation
+	, const FVector& EndLocation
+	, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
 	, TArray<AActor*> IgnoredActors
 	, bool bClearPreviousSelections)
 {
+	
+	if (Role != ROLE_Authority)
+	{
+		CLIENT_CHECK_IGNORE_LIST(TraceByObjectTypes, IgnoredActors);
+		ServerTraceByObjectTypes(StartLocation, EndLocation, CollisionChannels
+			, bClearPreviousSelections);
+	}
+
 	if (UWorld* world = GetWorld())
 	{
 		FCollisionObjectQueryParams CollisionObjectQueryParams;
@@ -165,11 +223,37 @@ bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation, const F
 	return false;
 }
 
-bool ATransformerActor::TraceByChannel(const FVector& StartLocation, const FVector& EndLocation
+bool ATransformerActor::ServerTraceByObjectTypes_Validate(const FVector& StartLocation, const FVector& EndLocation, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels, bool bClearPreviousSelections)
+{
+	return true; //no validation
+}
+
+void ATransformerActor::ServerTraceByObjectTypes_Implementation(const FVector& StartLocation
+	, const FVector& EndLocation
+	, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
+	, bool bClearPreviousSelections)
+{
+	TraceByObjectTypes(StartLocation, EndLocation
+		, CollisionChannels, TArray<AActor*>(), bClearPreviousSelections);
+}
+
+/********************************************************************************************/
+
+
+/****** Trace by Channel ********************************************************************/
+bool ATransformerActor::TraceByChannel(const FVector& StartLocation
+	, const FVector& EndLocation
 	, TEnumAsByte<ECollisionChannel> TraceChannel
 	, TArray<AActor*> IgnoredActors
 	, bool bClearPreviousSelections)
 {
+	if (Role != ROLE_Authority)
+	{
+		CLIENT_CHECK_IGNORE_LIST(TraceByChannel, IgnoredActors);
+		ServerTraceByChannel(StartLocation, EndLocation, TraceChannel
+			, bClearPreviousSelections);
+	}
+
 	if (UWorld* world = GetWorld())
 	{
 		FCollisionQueryParams CollisionQueryParams;
@@ -185,10 +269,37 @@ bool ATransformerActor::TraceByChannel(const FVector& StartLocation, const FVect
 	return false;
 }
 
+bool ATransformerActor::ServerTraceByChannel_Validate(const FVector& StartLocation
+	, const FVector& EndLocation, ECollisionChannel TraceChannel
+	, bool bClearPreviousSelections)
+{
+	return true;
+}
+
+void ATransformerActor::ServerTraceByChannel_Implementation(const FVector& StartLocation
+	, const FVector& EndLocation, ECollisionChannel TraceChannel
+	, bool bClearPreviousSelections)
+{
+	TraceByChannel(StartLocation, EndLocation
+		, TraceChannel, TArray<AActor*>(), bClearPreviousSelections);
+}
+
+/********************************************************************************************/
+
+
+/****** Trace by Profile ********************************************************************/
+
 bool ATransformerActor::TraceByProfile(const FVector& StartLocation, const FVector& EndLocation
 	, const FName& ProfileName, TArray<AActor*> IgnoredActors
 	, bool bClearPreviousSelections)
 {
+	if (Role != ROLE_Authority)
+	{
+		CLIENT_CHECK_IGNORE_LIST(TraceByProfile, IgnoredActors);
+		ServerTraceByProfile(StartLocation, EndLocation
+			, ProfileName, bClearPreviousSelections);
+	}
+
 	if (UWorld* world = GetWorld())
 	{
 		FCollisionQueryParams CollisionQueryParams;
@@ -204,6 +315,23 @@ bool ATransformerActor::TraceByProfile(const FVector& StartLocation, const FVect
 	return false;
 }
 
+bool ATransformerActor::ServerTraceByProfile_Validate(const FVector& StartLocation
+	, const FVector& EndLocation, const FName& ProfileName
+	, bool bClearPreviousSelections)
+{
+	return true;
+}
+
+void ATransformerActor::ServerTraceByProfile_Implementation(const FVector& StartLocation
+	, const FVector& EndLocation, const FName& ProfileName 
+	, bool bClearPreviousSelections)
+{
+	TraceByProfile(StartLocation, EndLocation, ProfileName
+		, TArray<AActor*>(), bClearPreviousSelections);
+}
+
+/********************************************************************************************/
+
 void ATransformerActor::Tick(float DeltaSeconds)
 {
 	if (!Gizmo.IsValid()) return;
@@ -216,19 +344,23 @@ void ATransformerActor::Tick(float DeltaSeconds)
 			if (PlayerController->DeprojectMousePositionToWorld(worldLocation, worldDirection))
 				UpdateTransform(PlayerController->PlayerCameraManager->GetActorForwardVector(), worldLocation, worldDirection);
 
-			Gizmo->ScaleGizmoScene(PlayerController->PlayerCameraManager->GetCameraLocation()
-				, PlayerController->PlayerCameraManager->GetActorForwardVector()
-				, PlayerController->PlayerCameraManager->GetFOVAngle());
+			if(PlayerController->IsLocalController())
+				Gizmo->ScaleGizmoScene(PlayerController->PlayerCameraManager->GetCameraLocation()
+					, PlayerController->PlayerCameraManager->GetActorForwardVector()
+					, PlayerController->PlayerCameraManager->GetFOVAngle());
 		}
 	}
 
 	Gizmo->UpdateGizmoSpace(CurrentSpaceType); //ToDo: change when this is called to improve performance when a gizmo is there without doing anything
 }
 
+/****** Update Transform ********************************************************************/
+
 void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVector& RayOrigin
 	, const FVector& RayDirection)
 {
-	if (!Gizmo.IsValid() || CurrentDomain == ETransformationDomain::TD_None) return;
+	if (!Gizmo.IsValid() || CurrentDomain == ETransformationDomain::TD_None) 
+		return;
 
 	FVector rayEnd = RayOrigin + 1'000'000'00 * RayDirection;
 
@@ -242,10 +374,28 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 	float* snappingValue = SnappingValues.Find(CurrentTransformation);
 
 	if (snappingEnabled && *snappingEnabled && snappingValue)
-			actualDeltaTransform = Gizmo->GetSnappedTransform(AccumulatedDeltaTransform
+			actualDeltaTransform = Gizmo->GetSnappedTransform(AccumulatedSnappedDeltaTransform
 				, calculatedDeltaTransform, CurrentDomain, *snappingValue);
 				//GetSnapped Transform Modifies Accumulated Delta Transform by how much Snapping Occurred
-		
+	
+	//Accumulate all the Delta Transform so that we can later 
+	AccumulatedNetDeltaTransform = FTransform(
+		actualDeltaTransform.GetRotation() * AccumulatedNetDeltaTransform.GetRotation(),
+		actualDeltaTransform.GetLocation() + AccumulatedNetDeltaTransform.GetLocation(),
+		actualDeltaTransform.GetScale3D()  + AccumulatedNetDeltaTransform.GetScale3D());
+
+	//check locality
+	if (IsOwnedBy(UGameplayStatics::GetPlayerController(this, 0)))
+		ApplyDeltaTransform(actualDeltaTransform);
+	
+}
+
+void ATransformerActor::ApplyDeltaTransform(const FTransform& AccumulatedDeltaTransform)
+{
+	float* snappingValue = SnappingValues.Find(CurrentTransformation);
+	bool* snappingEnabled = SnappingEnabled.Find(CurrentTransformation);
+
+	//move the stuff to another func to be called by clear domain
 	for (auto& sc : SelectedComponents)
 	{
 		if (!sc.Component) continue;
@@ -253,12 +403,12 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 		{
 			const FTransform& componentTransform = sc.Component->GetComponentTransform();
 
-			FQuat deltaRotation = actualDeltaTransform.GetRotation();
+			FQuat deltaRotation = AccumulatedDeltaTransform.GetRotation();
 
 			FVector deltaLocation = componentTransform.GetLocation() - Gizmo->GetActorLocation();
 
 			//DeltaScale is Unrotated Scale to Get Local Scale since World Scale is not supported
-			FVector deltaScale = componentTransform.GetRotation().UnrotateVector(actualDeltaTransform.GetScale3D());
+			FVector deltaScale = componentTransform.GetRotation().UnrotateVector(AccumulatedDeltaTransform.GetScale3D());
 
 
 			if (false == bRotateOnLocalAxis)
@@ -267,7 +417,7 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 			FTransform newTransform(
 				deltaRotation * componentTransform.GetRotation(),
 				//adding Gizmo Location + prevDeltaLocation (i.e. location from Gizmo to Object after optional Rotating) + deltaTransform Location Offset
-				deltaLocation + Gizmo->GetActorLocation() + actualDeltaTransform.GetLocation(),
+				deltaLocation + Gizmo->GetActorLocation() + AccumulatedDeltaTransform.GetLocation(),
 				deltaScale + componentTransform.GetScale3D());
 
 
@@ -280,7 +430,7 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 				sc.Component->SetMobility(EComponentMobility::Type::Movable);
 
 			sc.SetTransform(newTransform, bTransformUFocusableObjects, bComponentBased);
-			
+
 		}
 		else
 			UE_LOG(LogRuntimeTransformer, Warning
@@ -289,12 +439,24 @@ void ATransformerActor::UpdateTransform(const FVector& LookingVector, const FVec
 	}
 }
 
+bool ATransformerActor::ServerFinishUpdating_Validate(
+	const FTransform& AccumulatedDeltaTransform)
+{
+	return true;
+}
+
+void ATransformerActor::ServerFinishUpdating_Implementation(
+	const FTransform& AccumulatedDeltaTransform)
+{
+	ApplyDeltaTransform(AccumulatedDeltaTransform);
+}
+
+
+/********************************************************************************************/
+
 bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 	, bool bClearPreviousSelections)
 {
-	//Assign as None just in case we don't hit Any Gizmos
-	ClearDomain();
-
 	//Search for our Gizmo (if Valid) First before Selecting any item
 	if (Gizmo.IsValid())
 	{
@@ -316,15 +478,35 @@ bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 		}
 	}
 
-	//Only consider First Hit
+	//Assign as None since we didn't hit any gizmo 
+	ClearDomain();
+
+	//Only consider First Valid Hit (non-Gizmo)
 	if (HitResults.Num() > 0)
 	{
-		if (bComponentBased)
-			SelectComponent(Cast<USceneComponent>(HitResults[0].GetComponent()), bClearPreviousSelections);
-		else
-			SelectActor(HitResults[0].GetActor(), bClearPreviousSelections);
+		int hitIndex = 0;
+		bool bIsValidHit = false;
+		AActor* hitActor = nullptr;
+		do 
+		{
+			hitActor = HitResults[hitIndex].GetActor();
+			//check that hitActor is valid and not a Gizmo
+			if (IsValid(hitActor) && !Cast<ABaseGizmo>(hitActor)) 
+			{
+				bIsValidHit = true;
+				break;
+			}
 
-		return true;
+		} while (!bIsValidHit && ++hitIndex < HitResults.Num());
+
+		if (bIsValidHit)
+		{
+			if (bComponentBased)
+				SelectComponent(Cast<USceneComponent>(HitResults[hitIndex].GetComponent()), bClearPreviousSelections);
+			else
+				SelectActor(HitResults[hitIndex].GetActor(), bClearPreviousSelections);
+			return true;
+		}
 	}
 	return false;
 }
@@ -340,7 +522,7 @@ void ATransformerActor::SetComponentBased(bool bIsComponentBased)
 			SelectActor(c->GetOwner());
 }
 
-void ATransformerActor::SetTransformationType(TEnumAsByte<ETransformationType> TransformationType)
+void ATransformerActor::SetTransformationType(ETransformationType TransformationType)
 {
 	//Don't continue if these are the same.
 	if (CurrentTransformation == TransformationType) return;
@@ -353,12 +535,12 @@ void ATransformerActor::SetTransformationType(TEnumAsByte<ETransformationType> T
 	UpdateGizmoPlacement();
 }
 
-void ATransformerActor::SetSnappingEnabled(TEnumAsByte<ETransformationType> TransformationType, bool bSnappingEnabled)
+void ATransformerActor::SetSnappingEnabled(ETransformationType TransformationType, bool bSnappingEnabled)
 {
 	SnappingEnabled.Add(TransformationType, bSnappingEnabled);
 }
 
-void ATransformerActor::SetSnappingValue(TEnumAsByte<ETransformationType> TransformationType, float SnappingValue)
+void ATransformerActor::SetSnappingValue(ETransformationType TransformationType, float SnappingValue)
 {
 	SnappingValues.Add(TransformationType, SnappingValue);
 }
@@ -686,7 +868,7 @@ void ATransformerActor::SetGizmo()
 			if (UWorld* world = GetWorld())
 			{
 				UE_LOG(LogRuntimeTransformer, Display, TEXT("Creating new Gizmo"));
-				UClass* GizmoClass = GetGizmoClass(CurrentTransformation);
+				UClass* GizmoClass = GetGizmoClass_ServerInternal(CurrentTransformation);
 				if (GizmoClass)
 				{
 					Gizmo = Cast<ABaseGizmo>(world->SpawnActor(GizmoClass));
@@ -705,13 +887,12 @@ void ATransformerActor::SetGizmo()
 			Gizmo.Reset();
 		}
 	}
-
-
 }
 
 void ATransformerActor::UpdateGizmoPlacement()
 {
 	SetGizmo();
+
 	//means that there are no active gizmos (no selections) so nothing to do in this func
 	if (!Gizmo.IsValid()) return;
 
