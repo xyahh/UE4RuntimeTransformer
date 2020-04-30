@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "GameFramework/Pawn.h"
 #include "RuntimeTransformer.h"
 #include "RuntimeTransformer/Private/SelectableComponent.h"
 #include "TransformerActor.generated.h"
@@ -17,7 +17,7 @@ enum class EGizmoPlacement : uint8
 };
 
 UCLASS()
-class RUNTIMETRANSFORMER_API ATransformerActor : public AActor
+class RUNTIMETRANSFORMER_API ATransformerActor : public APawn
 {
 	GENERATED_BODY()
 
@@ -47,15 +47,6 @@ public:
 	//by default return true, override for custom logic
 	virtual bool ShouldSelect_Implementation(AActor* OwnerActor
 		, class USceneComponent* Component) { return true; }
-
-	/**
-	 * Setting a Player Controller makes most functionality automatic, but not necessary.
-	 * The Player Controller is used to get the Mouse World Space Position & Direction for the given Transformations.
-
-	 * NOTE: If the Player Controller is NOT set,  Tracing & UpdateTransform functions must be called manually.
-	*/
-	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void SetPlayerController(class APlayerController* Controller);
 
 	//Sets the Space of the Gizmo, whether its Local or World space.
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
@@ -88,15 +79,14 @@ public:
 
 	 * @param CollisionChannels - All the Channels to be considering during Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bClearPreviousSelections - If a selection happens, whether to unselect the previously selected components (false allows multi selection)
-	 * @param bTraceComponent - Whether the trace looks for Actors hit, or Components hit
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByObjectTypes(float TraceDistance
 		, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -108,15 +98,14 @@ public:
 
 	 * @param TraceChannel - The Ray Collision Channel to be Considered in the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bClearPreviousSelections - If a selection happens, whether to unselect the previously selected components (false allows multi selection)
-	 * @param bTraceComponent - Whether the trace looks for Actors hit, or Components hit
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByChannel(float TraceDistance 
 		, TEnumAsByte<ECollisionChannel> TraceChannel
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -128,15 +117,14 @@ public:
 
 	 * @param ProfileName - The Profile Name to be used during the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bClearPreviousSelections - If a selection happens, whether to unselect the previously selected components (false allows multi selection)
-	 * @param bTraceComponent - Whether the trace looks for Actors hit, or Components hit
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByProfile(float TraceDistance
 		, const FName& ProfileName
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -147,8 +135,7 @@ public:
 	 * @param EndLocation - the ending location of the trace, in World Space
 	 * @param CollisionChannels - All the Channels to be considering during Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bClearPreviousSelections - If a selection happens, whether to unselect the previously selected components (false allows multi selection)
-	 * @param bTraceComponent - Whether the trace looks for Actors hit, or Components hit
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
@@ -156,7 +143,7 @@ public:
 		, const FVector& EndLocation
 		, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -167,8 +154,7 @@ public:
 	 * @param EndLocation - the ending location of the trace, in World Space
 	 * @param TraceChannel - The Ray Collision Channel to be Considered in the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bClearPreviousSelections - If a selection happens, whether to unselect the previously selected components (false allows multi selection)
-	 * @param bTraceComponent - Whether the trace looks for Actors hit, or Components hit
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
@@ -176,7 +162,7 @@ public:
 		, const FVector& EndLocation
 		, TEnumAsByte<ECollisionChannel> TraceChannel
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 
 	/**
@@ -188,8 +174,7 @@ public:
 	 * @param EndLocation - the ending location of the trace, in World Space
 	 * @param ProfileName - The Profile Name to be used during the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bClearPreviousSelections - If a selection happens, whether to unselect the previously selected components (false allows multi selection)
-	 * @param bTraceComponent - Whether the trace looks for Components hit (true), or Actors hit (false)
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
@@ -197,7 +182,7 @@ public:
 		, const FVector& EndLocation
 		, const FName& ProfileName
 		, TArray<AActor*> IgnoredActors
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	// Update every Frame
 	// Checks for Mouse Update
@@ -231,12 +216,11 @@ public:
 	 * but can be called manually if you wish to provide your own list of Hit Results (e.g. tracing with different configuration/method)
 	 *
 	 * @param HitResults - a list of the FHitResults that were generated by LineTracing
-	 * @param bClearPrevious Selections - whether we should clear the previously selected objects (only relevant when there is no Gizmo in hit list)
-	 * @param bTraceComponent - whether we should get the HitComponent or not. If false, the HitActor will be used instead.
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool HandleTracedObjects(const TArray<FHitResult>& HitResults
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	/*
 	 * Called when the Gizmo State has changed (i.e. Domain has changed)
@@ -324,18 +308,19 @@ public:
 	* a copy of them.
 	
 	* Don't spam this :)
-
+	* @param WorldContext - Optional WorldContext. Recommended to set for Networking
 	* @param bSelectNewClones - whether to add the new clones to the Selection
-	* @param bClearPreviousSelections Whether to clear the previous selected Components 
+	* @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void CloneSelected(bool bSelectNewClones = true , bool bClearPreviousSelections = true);
+	void CloneSelected(const UObject* WorldContext = nullptr,
+		bool bSelectNewClones = true, bool bAppendObjects = false);
 
 private:
 
-	void CloneSelected_Actors(bool bSelectNewClones, bool bClearPreviousSelections);
+	void CloneSelected_Actors(const UObject* WorldContext, bool bSelectNewClones, bool bAppendObjects);
 
-	void CloneSelected_Components(bool bSelectNewClones, bool bClearPreviousSelections);
+	void CloneSelected_Components(const UObject* WorldContext, bool bSelectNewClones, bool bAppendObjects);
 
 public:
 
@@ -343,18 +328,18 @@ public:
 	/**
 	 * Select Component adds a given Component to a list of components that will be used for the Runtime Transforms
 	 * @param Component The component to add to the list.
-	 * @param bClearPreviousSelections Whether this Selection clears the previous selected Components (set false to allow multi selection)
-	 */
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void SelectComponent(class USceneComponent* Component, bool bClearPreviousSelections = true);
+	void SelectComponent(class USceneComponent* Component, bool bAppendObjects = false);
 
 	/**
 	 * Select Actor adds the Actor's Root Component to a list of components that will be used for the Runtime Transforms
 	 * @param Actor The Actor whose Root Component will be added to the list.
-	 * @param bClearPreviousSelections Whether this Selection clears the previous selected Components (set false to allow multi selection)
+	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void SelectActor(AActor* Actor, bool bClearPreviousSelections = true);
+	void SelectActor(AActor* Actor, bool bAppendObjects = false);
 
 	/**
 	 * Selects all the Components in given list.
@@ -362,7 +347,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void SelectMultipleComponents(const TArray<class USceneComponent*>& Components
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	/**
 	 * Selects all the Root Components of the Actors in given list.
@@ -370,7 +355,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void SelectMultipleActors(const TArray<AActor*>& Actors
-		, bool bClearPreviousSelections = true);
+		, bool bAppendObjects = false);
 
 	/**
 	 * Deselects a given Component, if found on the list.
@@ -430,9 +415,6 @@ private:
 	void ResetAccumulatedTransform();
 
 private:
-
-	//The player controller whose Mouse is to be used for the Transformations
-	APlayerController* PlayerController;
 
 	//The Current Space being used, whether it is Local or World.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))

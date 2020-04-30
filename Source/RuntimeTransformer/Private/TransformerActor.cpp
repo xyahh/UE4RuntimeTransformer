@@ -48,11 +48,6 @@ void ATransformerActor::BeginPlay()
 	SetSpaceType(CurrentSpaceType);
 }
 
-void ATransformerActor::SetPlayerController(APlayerController* Controller)
-{
-	PlayerController = Controller;
-}
-
 void ATransformerActor::SetSpaceType(ESpaceType Type)
 {
 	CurrentSpaceType = Type;
@@ -96,15 +91,15 @@ void ATransformerActor::ResetAccumulatedTransform()
 
 bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance
 	, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
-	, TArray<AActor*> IgnoredActors, bool bClearPreviousSelections)
+	, TArray<AActor*> IgnoredActors, bool bAppendObjects)
 {
-	if (PlayerController)
+	if (APlayerController* PlayerController = Cast< APlayerController>(Controller))
 	{
 		FVector worldLocation, worldDirection;
 		if (PlayerController->DeprojectMousePositionToWorld(worldLocation, worldDirection))
 		{
 			return TraceByObjectTypes(worldLocation, worldLocation + worldDirection * TraceDistance
-				, CollisionChannels, IgnoredActors, bClearPreviousSelections);
+				, CollisionChannels, IgnoredActors, bAppendObjects);
 		}
 	}
 	return false;
@@ -112,15 +107,15 @@ bool ATransformerActor::MouseTraceByObjectTypes(float TraceDistance
 
 bool ATransformerActor::MouseTraceByChannel(float TraceDistance
 	, TEnumAsByte<ECollisionChannel> TraceChannel, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
-	if (PlayerController)
+	if (APlayerController* PlayerController = Cast< APlayerController>(Controller))
 	{
 		FVector worldLocation, worldDirection;
 		if (PlayerController->DeprojectMousePositionToWorld(worldLocation, worldDirection))
 		{
 			return TraceByChannel(worldLocation, worldLocation + worldDirection * TraceDistance
-				, TraceChannel, IgnoredActors, bClearPreviousSelections);
+				, TraceChannel, IgnoredActors, bAppendObjects);
 		}
 	}
 	return false;
@@ -129,15 +124,15 @@ bool ATransformerActor::MouseTraceByChannel(float TraceDistance
 bool ATransformerActor::MouseTraceByProfile(float TraceDistance
 	, const FName& ProfileName
 	, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
-	if (PlayerController)
+	if (APlayerController* PlayerController = Cast< APlayerController>(Controller))
 	{
 		FVector worldLocation, worldDirection;
 		if (PlayerController->DeprojectMousePositionToWorld(worldLocation, worldDirection))
 		{
 			return TraceByProfile(worldLocation, worldLocation + worldDirection * TraceDistance
-				, ProfileName, IgnoredActors, bClearPreviousSelections);
+				, ProfileName, IgnoredActors, bAppendObjects);
 		}
 	}
 	return false;
@@ -147,7 +142,7 @@ bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation
 	, const FVector& EndLocation
 	, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 	, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	if (UWorld* world = GetWorld())
 	{
@@ -164,7 +159,7 @@ bool ATransformerActor::TraceByObjectTypes(const FVector& StartLocation
 		if (world->LineTraceMultiByObjectType(OutHits, StartLocation, EndLocation
 			, CollisionObjectQueryParams, CollisionQueryParams))
 		{
-			return HandleTracedObjects(OutHits, bClearPreviousSelections);
+			return HandleTracedObjects(OutHits, bAppendObjects);
 		}
 	}
 	return false;
@@ -174,7 +169,7 @@ bool ATransformerActor::TraceByChannel(const FVector& StartLocation
 	, const FVector& EndLocation
 	, TEnumAsByte<ECollisionChannel> TraceChannel
 	, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	if (UWorld* world = GetWorld())
 	{
@@ -185,7 +180,7 @@ bool ATransformerActor::TraceByChannel(const FVector& StartLocation
 		if (world->LineTraceMultiByChannel(OutHits, StartLocation, EndLocation
 			, TraceChannel, CollisionQueryParams))
 		{
-			return HandleTracedObjects(OutHits, bClearPreviousSelections);
+			return HandleTracedObjects(OutHits, bAppendObjects);
 		}
 	}
 	return false;
@@ -194,7 +189,7 @@ bool ATransformerActor::TraceByChannel(const FVector& StartLocation
 bool ATransformerActor::TraceByProfile(const FVector& StartLocation
 	, const FVector& EndLocation
 	, const FName& ProfileName, TArray<AActor*> IgnoredActors
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	if (UWorld* world = GetWorld())
 	{
@@ -205,7 +200,7 @@ bool ATransformerActor::TraceByProfile(const FVector& StartLocation
 		if (world->LineTraceMultiByProfile(OutHits, StartLocation, EndLocation
 			, ProfileName, CollisionQueryParams))
 		{
-			return HandleTracedObjects(OutHits, bClearPreviousSelections);
+			return HandleTracedObjects(OutHits, bAppendObjects);
 		}
 	}
 	return false;
@@ -217,7 +212,7 @@ void ATransformerActor::Tick(float DeltaSeconds)
 
 	if (!Gizmo.IsValid()) return;
 
-	if (PlayerController)
+	if (APlayerController* PlayerController = Cast< APlayerController>(Controller))
 	{
 		FVector worldLocation, worldDirection;
 		if (PlayerController->PlayerCameraManager)
@@ -318,7 +313,7 @@ void ATransformerActor::ApplyDeltaTransform(const FTransform& DeltaTransform)
 }
 
 bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	//Assign as None just in case we don't hit Any Gizmos
 	ClearDomain();
@@ -346,12 +341,13 @@ bool ATransformerActor::HandleTracedObjects(const TArray<FHitResult>& HitResults
 
 	for (auto& hits : HitResults)
 	{
-		if (Cast<ABaseGizmo>(hits.Actor)) continue; //ignore other Gizmos.
+		if (Cast<ABaseGizmo>(hits.Actor))
+			continue; //ignore other Gizmos.
 
 		if (bComponentBased)
-			SelectComponent(Cast<USceneComponent>(hits.GetComponent()), bClearPreviousSelections);
+			SelectComponent(Cast<USceneComponent>(hits.GetComponent()), bAppendObjects);
 		else
-			SelectActor(hits.GetActor(), bClearPreviousSelections);
+			SelectActor(hits.GetActor(), bAppendObjects);
 
 		return true;
 	}
@@ -401,22 +397,27 @@ void ATransformerActor::GetSelectedComponents(TArray<class USceneComponent*>& ou
 		outGizmoPlacedComponent = Gizmo->GetParentComponent();
 }
 
-void ATransformerActor::CloneSelected(bool bSelectNewClones, bool bClearPreviousSelections)
+void ATransformerActor::CloneSelected(const UObject* WorldContext, bool bSelectNewClones
+	, bool bAppendObjects)
 {
 	if (bComponentBased)
-		CloneSelected_Components(bSelectNewClones, bClearPreviousSelections);
+		CloneSelected_Components(WorldContext, bSelectNewClones, bAppendObjects);
 	else
-		CloneSelected_Actors(bSelectNewClones, bClearPreviousSelections);
+		CloneSelected_Actors(WorldContext, bSelectNewClones, bAppendObjects);
 
 	if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
 		Gizmo->SetTransformProgressState(true, CurrentDomain);
 }
 
-void ATransformerActor::CloneSelected_Actors(bool bSelectNewClones
-	, bool bClearPreviousSelections)
+void ATransformerActor::CloneSelected_Actors(const UObject* WorldContext
+	, bool bSelectNewClones
+	, bool bAppendObjects)
 {
 	UWorld* world = GetWorld();
 	if (!world) return;
+	
+	if (Role != ROLE_Authority)
+		UE_LOG(LogRuntimeTransformer, Warning, TEXT("Clone is not being executed in the Server!"));
 
 	TArray<AActor*> actorsToClone; //an array to keep order
 	for (auto& sc : SelectedComponents)
@@ -428,7 +429,7 @@ void ATransformerActor::CloneSelected_Actors(bool bSelectNewClones
 	TArray<AActor*> actorClones;
 	TSet<AActor*>	actorsProcessed;
 	
-	if (bClearPreviousSelections)
+	if (false == bAppendObjects)
 		DeselectAll(false);
 
 	for (auto& templateActor : actorsToClone)
@@ -449,8 +450,9 @@ void ATransformerActor::CloneSelected_Actors(bool bSelectNewClones
 
 }
 
-void ATransformerActor::CloneSelected_Components(bool bSelectNewClones
-	, bool bClearPreviousSelections)
+void ATransformerActor::CloneSelected_Components(const UObject* WorldContext
+	, bool bSelectNewClones
+	, bool bAppendObjects)
 {
 	UWorld* world = GetWorld();
 	if (!world) return;
@@ -460,7 +462,7 @@ void ATransformerActor::CloneSelected_Components(bool bSelectNewClones
 
 	auto Components = SelectedComponents;
 
-	if (bClearPreviousSelections)
+	if (false == bAppendObjects)
 		DeselectAll();
 
 	//clone components phase
@@ -539,13 +541,13 @@ void ATransformerActor::CloneSelected_Components(bool bSelectNewClones
 }
 
 void ATransformerActor::SelectComponent(class USceneComponent* Component
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	if (!Component) return;
 
 	if (ShouldSelect(Component->GetOwner(), Component))
 	{
-		if (bClearPreviousSelections)
+		if (false == bAppendObjects)
 			DeselectAll();
 		SelectComponent_Internal(Component);
 		UpdateGizmoPlacement();
@@ -553,13 +555,13 @@ void ATransformerActor::SelectComponent(class USceneComponent* Component
 }
 
 void ATransformerActor::SelectActor(AActor* Actor
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	if (!Actor) return;
 
 	if (ShouldSelect(Actor, Actor->GetRootComponent()))
 	{
-		if (bClearPreviousSelections)
+		if (false == bAppendObjects)
 			DeselectAll();
 		SelectComponent_Internal(Actor->GetRootComponent());
 		UpdateGizmoPlacement();
@@ -567,7 +569,7 @@ void ATransformerActor::SelectActor(AActor* Actor
 }
 
 void ATransformerActor::SelectMultipleComponents(const TArray<USceneComponent*>& Components
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	bool bValidList = false;
 	for (auto& c : Components)
@@ -575,10 +577,10 @@ void ATransformerActor::SelectMultipleComponents(const TArray<USceneComponent*>&
 		if (!c) continue;
 		if (!ShouldSelect(c->GetOwner(), c)) continue;
 
-		if (bClearPreviousSelections)
+		if (false == bAppendObjects)
 		{
 			DeselectAll();
-			bClearPreviousSelections = false;
+			bAppendObjects = true;
 			//only run once. This is not place outside in case a list is empty or contains only invalid components
 		}
 		bValidList = true;
@@ -589,7 +591,7 @@ void ATransformerActor::SelectMultipleComponents(const TArray<USceneComponent*>&
 }
 
 void ATransformerActor::SelectMultipleActors(const TArray<AActor*>& Actors
-	, bool bClearPreviousSelections)
+	, bool bAppendObjects)
 {
 	bool bValidList = false;
 	for (auto& a : Actors)
@@ -597,10 +599,10 @@ void ATransformerActor::SelectMultipleActors(const TArray<AActor*>& Actors
 		if (!a) continue;
 		if (!ShouldSelect(a, a->GetRootComponent())) continue;
 
-		if (bClearPreviousSelections)
+		if (false == bAppendObjects)
 		{
 			DeselectAll();
-			bClearPreviousSelections = false;
+			bAppendObjects = true;
 			//only run once. This is not place outside in case a list is empty or contains only invalid components
 		}
 
@@ -758,18 +760,21 @@ void ATransformerActor::UpdateGizmoPlacement()
 	Gizmo->DetachFromActor(detachmentRules);
 	Gizmo->SetActorTransform(FTransform()); //Reset Transformation
 
-	FAttachmentTransformRules attachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
-
-	attachmentRules;
+	USceneComponent* ComponentToAttachTo = nullptr;
 
 	switch (GizmoPlacement)
 	{
-	case EGizmoPlacement::GP_OnFirstSelection:
-		Gizmo->AttachToComponent(SelectedComponents[0].Component, attachmentRules);
-		break;
+	case EGizmoPlacement::GP_OnFirstSelection: 
+		ComponentToAttachTo = SelectedComponents[0].Component; break;
 	case EGizmoPlacement::GP_OnLastSelection:
-		Gizmo->AttachToComponent(SelectedComponents.Last().Component, attachmentRules);
-		break;
+		ComponentToAttachTo = SelectedComponents.Last().Component; break;
+	}
+
+	if (ComponentToAttachTo)
+	{
+		FAttachmentTransformRules attachmentRules 
+			= FAttachmentTransformRules::SnapToTargetIncludingScale;
+		Gizmo->AttachToComponent(ComponentToAttachTo, attachmentRules);
 	}
 
 	Gizmo->UpdateGizmoSpace(CurrentSpaceType);
