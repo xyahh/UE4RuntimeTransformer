@@ -3,7 +3,7 @@
 
 #include "SelectableComponent.h"
 #include "RuntimeTransformer/Public/FocusableObject.h"
-#include "RuntimeTransformer/Public/TransformerActor.h"
+#include "RuntimeTransformer/Public/TransformerPawn.h"
 #include "Components/SceneComponent.h"
 
 FSelectableComponent::FSelectableComponent(class USceneComponent* Component_) 
