@@ -407,14 +407,17 @@ private:
 	The core functionality, but can be called by Selection of Multiple objects
 	so as to not call UpdateGizmo every time
 	*/
-	void SelectComponent_Internal(class USceneComponent* Component);
+	void AddComponent_Internal(TArray<class USceneComponent*>& OutComponentList
+		, class USceneComponent* Component);
 
 	/*
 	The core functionality, but can be called by Selection of Multiple objects
 	so as to not call UpdateGizmo every time
 	*/
-	void DeselectComponent_Internal(class USceneComponent* Component);
-	void DeselectComponentAtIndex_Internal(class USceneComponent* Component, int32 Index);
+	void DeselectComponent_Internal(TArray<class USceneComponent*>& OutComponentList
+		, class USceneComponent* Component);
+	void DeselectComponentAtIndex_Internal(TArray<class USceneComponent*>& OutComponentList
+		, int32 Index);
 
 	/**
 	 * Creates / Replaces Gizmo with the Current Transformation.
@@ -469,6 +472,9 @@ public:
 		, const FName& ProfileName
 		, bool bAppendObjects = false);
 
+	TArray<AActor*> GetIgnoredActorsForServerTrace() const;
+	void ReplicateServerTraceResults(bool bTraceSuccessful, bool bAppendObjects);
+
 	/*
 	* ServerCall
 	* @ see TraceByObjectTypes
@@ -486,17 +492,6 @@ public:
 		, bool bAppendObjects) { return true; }
 
 	void ServerTraceByObjectTypes_Implementation(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-		, bool bAppendObjects);
-
-	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastTraceByObjectTypes(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-		, bool bAppendObjects);
-
-	void MulticastTraceByObjectTypes_Implementation(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
 		, bool bAppendObjects);
@@ -522,16 +517,6 @@ public:
 		, ECollisionChannel TraceChannel
 		, bool bAppendObjects);
 
-	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastTraceByChannel(const FVector& StartLocation
-		, const FVector& EndLocation
-		, ECollisionChannel TraceChannel
-		, bool bAppendObjects);
-
-	void MulticastTraceByChannel_Implementation(const FVector& StartLocation
-		, const FVector& EndLocation
-		, ECollisionChannel TraceChannel
-		, bool bAppendObjects);
 
 	/*
 	* ServerCall
@@ -553,19 +538,6 @@ public:
 		, const FName& ProfileName
 		, bool bAppendObjects);
 
-	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastTraceByProfile(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const FName& ProfileName
-		, bool bAppendObjects);
-
-	void MulticastTraceByProfile_Implementation(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const FName& ProfileName
-		, bool bAppendObjects);
-
-
-	void ReplicateTraceResult(bool bTraceSuccessful, bool bAppendObjects);
 
 	/*
 	* ServerCall
@@ -599,7 +571,7 @@ public:
 	* Then it calls ServerApplyTransform and Resets the Accumulated Network Transform.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
-	void FinishTransform();
+	void ReplicateFinishTransform();
 
 	/*
 	* ServerCall
@@ -645,15 +617,10 @@ public:
 	void CheckUnreplicatedActors();
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastNewActorClones(const TArray<AActor*>& Actors);
-	void MulticastNewActorClones_Implementation(const TArray<AActor*>& Actors);
+	void MulticastNewActorClones(const TArray<AActor*>& Actors, bool bAppendObjects);
+	void MulticastNewActorClones_Implementation(const TArray<AActor*>& Actors, bool bAppendObjects);
 
-
-	/*
-	* ServerCall
-	* @ see SetDomain
-	*/
-	UFUNCTION(Server, Unreliable, WithValidation)
+	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetDomain(ETransformationDomain Domain);
 	bool ServerSetDomain_Validate(ETransformationDomain Domain) { return true; }
 	void ServerSetDomain_Implementation(ETransformationDomain Domain);
@@ -662,6 +629,12 @@ public:
 	void MulticastSetDomain(ETransformationDomain Domain);
 	void MulticastSetDomain_Implementation(ETransformationDomain Domain);
 
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSetSelectedComponents(const TArray<USceneComponent*>& Components);
+
+	void MulticastSetSelectedComponents_Implementation(
+		const TArray<USceneComponent*>& Components);
 
 	//Networking Variables
 private:
@@ -794,4 +767,8 @@ private:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bComponentBased;
+
+	//Property that is used to Store the value of bAppendObjects when Cloning for Networking (since it's not an Immediate procedure)
+	//Only relevant in the Server
+	bool bAppendObjectsForClones;
 };

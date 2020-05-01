@@ -46,6 +46,7 @@ ATransformerPawn::ATransformerPawn()
 	bForceMobility = false;
 	bToggleSelectedInMultiSelection = true;
 	bComponentBased = false;
+	bAppendObjectsForClones = false;
 }
 
 void ATransformerPawn::GetLifetimeReplicatedProps(
@@ -459,8 +460,9 @@ bool ATransformerPawn::HandleTracedObjects(const TArray<FHitResult>& HitResults
 		else
 			SelectActor(hits.GetActor(), bAppendObjects);
 
-		return true;
+		return true; //don't process more!
 	}
+
 	return false;
 }
 
@@ -471,8 +473,13 @@ void ATransformerPawn::SetComponentBased(bool bIsComponentBased)
 	if(bComponentBased)
 		SelectMultipleComponents(selectedComponents, false);
 	else
+	{
+		TArray<AActor*> actors;
 		for (auto& c : selectedComponents)
-			SelectActor(c->GetOwner());
+			actors.Add(c->GetOwner());
+		SelectMultipleActors(actors, false);
+	}
+
 }
 
 void ATransformerPawn::SetTransformationType(ETransformationType TransformationType)
@@ -504,7 +511,6 @@ void ATransformerPawn::SetSnappingValue(ETransformationType TransformationType, 
 void ATransformerPawn::GetSelectedComponents(TArray<class USceneComponent*>& outComponentList
 	, USceneComponent*& outGizmoPlacedComponent) const
 {
-
 	outComponentList = SelectedComponents;
 	if (Gizmo.IsValid())
 		outGizmoPlacedComponent = Gizmo->GetParentComponent();
@@ -518,7 +524,7 @@ TArray<USceneComponent*> ATransformerPawn::GetSelectedComponents() const
 void ATransformerPawn::CloneSelected(bool bSelectNewClones
 	, bool bAppendObjects)
 {
-	if (Role != ROLE_Authority)
+	if (Role < ROLE_Authority)
 		UE_LOG(LogRuntimeTransformer, Warning
 			, TEXT("Cloning in a Non-Authority! Please use the ReplicatedTransformerPawn Clone RPCs instead"));
 
@@ -563,13 +569,13 @@ TArray<class USceneComponent*> ATransformerPawn::CloneFromList(const TArray<USce
 TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor*>& Actors
 	, bool bSelectNewClones)
 {
-
 	TArray<class USceneComponent*> outClones;
 
 	UWorld* world = GetWorld();
 	if (!world) return outClones;
 	
 	TSet<AActor*>	actorsProcessed;
+	TArray<AActor*> actorsToSelect;
 	for (auto& templateActor : Actors)
 	{
 		if (!templateActor) continue;
@@ -579,17 +585,22 @@ TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor
 
 		FTransform spawnTransform;
 		FActorSpawnParameters spawnParams;
+
 		spawnParams.Template = templateActor;
+		spawnParams.Instigator = this;
+		spawnParams.Owner = this;
 
 		if (AActor* actor = world->SpawnActor(templateActor->GetClass()
 			, &spawnTransform, spawnParams))
 		{
 			outClones.Add(actor->GetRootComponent());
-			if (bSelectNewClones) 
-				SelectActor(actor, false);
+			if (bSelectNewClones)
+				actorsToSelect.Add(actor);
 		}
 	}
 
+	if (bSelectNewClones)
+		SelectMultipleActors(actorsToSelect);
 	return outClones;
 }
 
@@ -630,6 +641,7 @@ TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<cl
 		}
 	}
 
+	TArray<USceneComponent*> componentsToSelect;
 	//reparenting phase
 	FAttachmentTransformRules attachmentRule(EAttachmentRule::KeepWorld, false);
 	for (auto& cp : CcOp)
@@ -676,10 +688,18 @@ TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<cl
 		cp.Key->AttachToComponent(parent, attachmentRule);
 		cp.Key->RegisterComponent();
 
-		if(bSelectNewClones && (parent == cp.Value || parent == actorOwner->GetRootComponent())) //check if the parent of the cloned is original (means it's topmost)
-			SelectComponent(cp.Key, false); //only select those that have an "original parent". 
-		//Selecting childs and parents can cause weird issues so only select the topmost clones (those that do not have cloned parents!)
+		//Selecting childs and parents can cause weird issues 
+		// so only select the topmost clones (those that do not have cloned parents!)
+		//only select those that have an "original parent". 
+		if (bSelectNewClones && (parent == cp.Value 
+			|| parent == actorOwner->GetRootComponent())) 
+			//check if the parent of the cloned is original (means it's topmost)
+			componentsToSelect.Add(cp.Key);
 	}
+
+	if(bSelectNewClones)
+		SelectMultipleComponents(componentsToSelect, false);
+	
 
 	return outClones;
 }
@@ -693,7 +713,7 @@ void ATransformerPawn::SelectComponent(class USceneComponent* Component
 	{
 		if (false == bAppendObjects)
 			DeselectAll();
-		SelectComponent_Internal(Component);
+		AddComponent_Internal(SelectedComponents, Component);
 		UpdateGizmoPlacement();
 	}
 }
@@ -707,7 +727,7 @@ void ATransformerPawn::SelectActor(AActor* Actor
 	{
 		if (false == bAppendObjects)
 			DeselectAll();
-		SelectComponent_Internal(Actor->GetRootComponent());
+		AddComponent_Internal(SelectedComponents, Actor->GetRootComponent());
 		UpdateGizmoPlacement();
 	}
 }
@@ -716,6 +736,8 @@ void ATransformerPawn::SelectMultipleComponents(const TArray<USceneComponent*>& 
 	, bool bAppendObjects)
 {
 	bool bValidList = false;
+	auto TempSelectedComponents = SelectedComponents;
+
 	for (auto& c : Components)
 	{
 		if (!c) continue;
@@ -728,9 +750,10 @@ void ATransformerPawn::SelectMultipleComponents(const TArray<USceneComponent*>& 
 			//only run once. This is not place outside in case a list is empty or contains only invalid components
 		}
 		bValidList = true;
-		SelectComponent_Internal(c);
+		AddComponent_Internal(TempSelectedComponents, c);
 	}
 
+	SelectedComponents = TempSelectedComponents;
 	if(bValidList) UpdateGizmoPlacement();
 }
 
@@ -738,6 +761,8 @@ void ATransformerPawn::SelectMultipleActors(const TArray<AActor*>& Actors
 	, bool bAppendObjects)
 {
 	bool bValidList = false;
+	auto TempSelectedComponents = SelectedComponents;
+
 	for (auto& a : Actors)
 	{
 		if (!a) continue;
@@ -751,16 +776,17 @@ void ATransformerPawn::SelectMultipleActors(const TArray<AActor*>& Actors
 		}
 
 		bValidList = true;
-		SelectComponent_Internal(a->GetRootComponent());
+		AddComponent_Internal(TempSelectedComponents, a->GetRootComponent());
 	}
 
+	SelectedComponents = TempSelectedComponents;
 	if(bValidList) UpdateGizmoPlacement();
 }
 
 void ATransformerPawn::DeselectComponent(USceneComponent* Component)
 {
 	if (!Component) return;
-	DeselectComponent_Internal(Component);
+	DeselectComponent_Internal(SelectedComponents, Component);
 	UpdateGizmoPlacement();
 }
 
@@ -772,10 +798,13 @@ void ATransformerPawn::DeselectActor(AActor* Actor)
 
 TArray<USceneComponent*> ATransformerPawn::DeselectAll(bool bDestroyDeselected)
 {
-	TArray<USceneComponent*> componentsToDeselect = SelectedComponents;
-	for (auto& c : componentsToDeselect)
-		DeselectComponent(c);
+	UE_LOG(LogRuntimeTransformer, Log, TEXT("DeselectingAll. Count: %d")
+		, SelectedComponents.Num());
 
+	TArray<USceneComponent*> componentsToDeselect = SelectedComponents;
+	for (auto& i : componentsToDeselect)
+		DeselectComponent(i);
+		//calling internal so as not to modify SelectedComponents until the last bit!
 	SelectedComponents.Empty();
 	UpdateGizmoPlacement();
 
@@ -798,42 +827,45 @@ TArray<USceneComponent*> ATransformerPawn::DeselectAll(bool bDestroyDeselected)
 	return componentsToDeselect;
 }
 
-void ATransformerPawn::SelectComponent_Internal(USceneComponent* Component)
+void ATransformerPawn::AddComponent_Internal(TArray<USceneComponent*>& OutComponentList
+	, USceneComponent* Component)
 {
 	//if (!Component) return; //assumes that previous have checked, since this is Internal.
 
-	int32 Index = SelectedComponents.Find(Component);
+	int32 Index = OutComponentList.Find(Component);
 
 	if (INDEX_NONE == Index) //Component is not in list
 	{
-		SelectedComponents.Emplace(Component);
+		OutComponentList.Emplace(Component);
 		bool bImplementsInterface;
-		Select(SelectedComponents.Last(), &bImplementsInterface);
+		Select(OutComponentList.Last(), &bImplementsInterface);
 		OnComponentSelectionChange(Component, true, bImplementsInterface);
 	}
 	else if (bToggleSelectedInMultiSelection)
-		DeselectComponentAtIndex_Internal(Component, Index);
+		DeselectComponentAtIndex_Internal(OutComponentList, Index);
 }
 
-void ATransformerPawn::DeselectComponent_Internal(USceneComponent* Component)
+void ATransformerPawn::DeselectComponent_Internal(TArray<USceneComponent*>& OutComponentList
+	, USceneComponent* Component)
 {
 	//if (!Component) return; //assumes that previous have checked, since this is Internal.
 
-	int32 Index = SelectedComponents.Find(Component);
+	int32 Index = OutComponentList.Find(Component);
 	if (INDEX_NONE != Index)
-		DeselectComponentAtIndex_Internal(Component, Index);
+		DeselectComponentAtIndex_Internal(OutComponentList, Index);
 }
 
-void ATransformerPawn::DeselectComponentAtIndex_Internal(USceneComponent* Component
+void ATransformerPawn::DeselectComponentAtIndex_Internal(
+	TArray<USceneComponent*>& OutComponentList
 	, int32 Index)
 {
 	//if (!Component) return; //assumes that previous have checked, since this is Internal.
-
-	if (SelectedComponents.IsValidIndex(Index))
+	if (OutComponentList.IsValidIndex(Index))
 	{
+		USceneComponent* Component = OutComponentList[Index];
 		bool bImplementsInterface;
-		Deselect(SelectedComponents[Index], &bImplementsInterface);
-		SelectedComponents.RemoveAt(Index);
+		Deselect(Component, &bImplementsInterface);
+		OutComponentList.RemoveAt(Index);
 		OnComponentSelectionChange(Component, false, bImplementsInterface);
 	}
 
@@ -929,7 +961,22 @@ void ATransformerPawn::ReplicatedMouseTraceByObjectTypes(float TraceDistance
 {
 	FVector start, end;
 	if (GetMouseStartEndPoints(TraceDistance, start, end))
-		ServerTraceByObjectTypes(start, end, CollisionChannels, bAppendObjects);
+	{
+		bool bTraceSuccessful = TraceByObjectTypes(start, end
+			, CollisionChannels
+			, TArray<AActor*>(), bAppendObjects);
+
+		if (!bTraceSuccessful && !bAppendObjects)
+			ServerDeselectAll(false);
+
+		// If a Local Trace was on a Gizmo, just tell the Server that we 
+		// have hit our Gizmo and just change the Domain there.
+		// Else, do the Server Trace
+		if (CurrentDomain == ETransformationDomain::TD_None)
+			ServerTraceByObjectTypes(start, end, CollisionChannels, bAppendObjects);
+		else
+			ServerSetDomain(CurrentDomain);
+	}
 }
 
 void ATransformerPawn::ReplicatedMouseTraceByChannel(float TraceDistance
@@ -937,7 +984,22 @@ void ATransformerPawn::ReplicatedMouseTraceByChannel(float TraceDistance
 {
 	FVector start, end;
 	if (GetMouseStartEndPoints(TraceDistance, start, end))
-		ServerTraceByChannel(start, end, CollisionChannel, bAppendObjects);
+	{
+		bool bTraceSuccessful = TraceByChannel(start, end
+			, CollisionChannel
+			, TArray<AActor*>(), bAppendObjects);
+
+		if (!bTraceSuccessful && !bAppendObjects)
+			ServerDeselectAll(false);
+
+		// If a Local Trace was on a Gizmo, just tell the Server that we 
+		// have hit our Gizmo and just change the Domain there.
+		// Else, do the Server Trace
+		if (CurrentDomain == ETransformationDomain::TD_None)
+			ServerTraceByChannel(start, end, CollisionChannel, bAppendObjects);
+		else
+			ServerSetDomain(CurrentDomain);
+	}
 }
 
 void ATransformerPawn::ReplicatedMouseTraceByProfile(float TraceDistance
@@ -945,8 +1007,44 @@ void ATransformerPawn::ReplicatedMouseTraceByProfile(float TraceDistance
 {
 	FVector start, end;
 	if (GetMouseStartEndPoints(TraceDistance, start, end))
-		ServerTraceByProfile(start, end, ProfileName, bAppendObjects);
+	{
+		bool bTraceSuccessful = TraceByProfile(start, end
+			, ProfileName
+			, TArray<AActor*>(), bAppendObjects);
+
+		if (!bTraceSuccessful && !bAppendObjects)
+			ServerDeselectAll(false);
+
+		// If a Local Trace was on a Gizmo, just tell the Server that we 
+		// have hit our Gizmo and just change the Domain there.
+		// Else, do the Server Trace
+		if (CurrentDomain == ETransformationDomain::TD_None)
+			ServerTraceByProfile(start, end, ProfileName, bAppendObjects);
+		else
+			ServerSetDomain(CurrentDomain);
+	}
 }
+
+
+
+TArray<AActor*> ATransformerPawn::GetIgnoredActorsForServerTrace() const
+{
+	TArray<AActor*> ignoredActors;
+	//Ignore Gizmo in Server Trace Test (since Gizmo is relative)
+	if (Gizmo.IsValid())
+		ignoredActors.Add(Gizmo.Get());
+	return ignoredActors;
+}
+
+void ATransformerPawn::ReplicateServerTraceResults(bool bTraceSuccessful, bool bAppendObjects)
+{
+	if (!bTraceSuccessful && !bAppendObjects)
+		DeselectAll(false);
+
+	MulticastSetDomain(CurrentDomain);
+	MulticastSetSelectedComponents(SelectedComponents);
+}
+
 
 
 void ATransformerPawn::ServerTraceByObjectTypes_Implementation(
@@ -954,77 +1052,29 @@ void ATransformerPawn::ServerTraceByObjectTypes_Implementation(
 	, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
 	, bool bAppendObjects)
 {
-	MulticastTraceByObjectTypes(StartLocation,
-		EndLocation, CollisionChannels, bAppendObjects);
+	bool bTraceSuccessful = TraceByObjectTypes(StartLocation, EndLocation, CollisionChannels
+		, GetIgnoredActorsForServerTrace(), bAppendObjects);
+	ReplicateServerTraceResults(bTraceSuccessful, bAppendObjects);
 }
-
-void ATransformerPawn::MulticastTraceByObjectTypes_Implementation(
-	const FVector& StartLocation, const FVector& EndLocation
-	, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-	, bool bAppendObjects)
-{
-	bool bTracedObject = TraceByObjectTypes(StartLocation, EndLocation
-		, CollisionChannels, TArray<AActor*>(), bAppendObjects);
-
-	ReplicateTraceResult(bTracedObject, bAppendObjects);
-}
-
-
 
 void ATransformerPawn::ServerTraceByChannel_Implementation(
 	const FVector& StartLocation, const FVector& EndLocation
 	, ECollisionChannel TraceChannel, bool bAppendObjects)
 {
-	MulticastTraceByChannel(StartLocation, EndLocation
-		, TraceChannel, bAppendObjects);
+	bool bTraceSuccessful = TraceByChannel(StartLocation, EndLocation, TraceChannel
+		, GetIgnoredActorsForServerTrace(), bAppendObjects);
+	ReplicateServerTraceResults(bTraceSuccessful, bAppendObjects);
 }
-
-void ATransformerPawn::MulticastTraceByChannel_Implementation(
-	const FVector& StartLocation, const FVector& EndLocation
-	, ECollisionChannel TraceChannel, bool bAppendObjects)
-{
-	bool bTracedObject = TraceByChannel(StartLocation, EndLocation
-		, TraceChannel, TArray<AActor*>(), bAppendObjects);
-
-	ReplicateTraceResult(bTracedObject, bAppendObjects);
-}
-
 
 
 void ATransformerPawn::ServerTraceByProfile_Implementation(
 	const FVector& StartLocation, const FVector& EndLocation
 	, const FName& ProfileName, bool bAppendObjects)
 {
-	MulticastTraceByProfile(StartLocation, EndLocation
-		, ProfileName, bAppendObjects);
+	bool bTraceSuccessful = TraceByProfile(StartLocation, EndLocation, ProfileName
+		, GetIgnoredActorsForServerTrace(), bAppendObjects);
+	ReplicateServerTraceResults(bTraceSuccessful, bAppendObjects);
 }
-
-void ATransformerPawn::MulticastTraceByProfile_Implementation(
-	const FVector& StartLocation, const FVector& EndLocation
-	, const FName& ProfileName, bool bAppendObjects)
-{
-	bool bTracedObject = TraceByProfile(StartLocation, EndLocation
-		, ProfileName, TArray<AActor*>(), bAppendObjects);
-
-	ReplicateTraceResult(bTracedObject, bAppendObjects);
-}
-
-
-
-void ATransformerPawn::ReplicateTraceResult(bool bTraceSuccessful
-	, bool bAppendObjects)
-{
-	if (IsLocallyControlled())
-	{
-		bool bIsTransformInProgress;
-		if (bTraceSuccessful)
-			ServerSetDomain(GetCurrentDomain(bIsTransformInProgress));
-
-		if (!bTraceSuccessful && !bAppendObjects)
-			ServerDeselectAll(false);
-	}
-}
-
 
 void ATransformerPawn::ServerClearDomain_Implementation()
 {
@@ -1053,7 +1103,7 @@ void ATransformerPawn::MulticastApplyTransform_Implementation(
 
 
 
-void ATransformerPawn::FinishTransform()
+void ATransformerPawn::ReplicateFinishTransform()
 {
 	ServerClearDomain();
 	ServerApplyTransform(NetworkDeltaTransform);
@@ -1093,8 +1143,12 @@ void ATransformerPawn::ServerCloneSelected_Implementation(bool bSelectNewClones
 {
 	auto ComponentListCopy = GetSelectedComponents();
 
-	if (false == bAppendObjects)
+	if (bSelectNewClones)
+		//Store it to be used in the Timer
+		bAppendObjectsForClones = bAppendObjects;
+	else
 		MulticastDeselectAll(false);
+
 
 	//just create 'em, not select 'em (we select 'em later)
 	auto cloneList = CloneFromList(ComponentListCopy, false);
@@ -1134,28 +1188,32 @@ void ATransformerPawn::CheckUnreplicatedActors()
 		UnreplicatedActorClones.Remove(i);
 
 	if (UnreplicatedActorClones.Num() == 0)
+	{
 		//stop calling this if no more unreplicated actors
 		GetWorldTimerManager().ClearTimer(CheckUnrepTimerHandle);
+	}
 
-	//Send all the actors that should be valid
-	MulticastNewActorClones(ReplicatedActors);
+	if (ReplicatedActors.Num() > 0)
+	{
+		//Send all the actors that should be valid
+		MulticastNewActorClones(ReplicatedActors, bAppendObjectsForClones);
+	}
+
 }
 
 void ATransformerPawn::MulticastNewActorClones_Implementation(
-	const TArray<AActor*>& Actors)
+	const TArray<AActor*>& Actors, bool bAppendObjects)
 {
 	if (bComponentBased)
 	{
 
 	}
 	else
-		SelectMultipleActors(Actors, true);
+		SelectMultipleActors(Actors, bAppendObjects);
 
 	if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
 		Gizmo->SetTransformProgressState(true, CurrentDomain);
 }
-
-
 
 void ATransformerPawn::ServerSetDomain_Implementation(ETransformationDomain Domain)
 {
@@ -1165,4 +1223,12 @@ void ATransformerPawn::ServerSetDomain_Implementation(ETransformationDomain Doma
 void ATransformerPawn::MulticastSetDomain_Implementation(ETransformationDomain Domain)
 {
 	SetDomain(Domain);
+}
+
+void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
+	const TArray<USceneComponent*>& Components)
+{
+	DeselectAll();
+	if(Components.Num() > 0)
+		SelectMultipleComponents(Components);
 }
