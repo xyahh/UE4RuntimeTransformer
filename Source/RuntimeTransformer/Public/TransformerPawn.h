@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "RuntimeTransformer.h"
-#include "RuntimeTransformer/Private/SelectableComponent.h"
 #include "TransformerPawn.generated.h"
 
 UENUM(BlueprintType)
@@ -24,13 +23,18 @@ class RUNTIMETRANSFORMER_API ATransformerPawn : public APawn
 public:
 	// Sets default values for this actor's properties
 	ATransformerPawn();
+	virtual void GetLifetimeReplicatedProps(
+		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-protected:
+private:
 
-	virtual void BeginPlay() override;
-
+	class UObject* GetUFocusable(class USceneComponent* Component) const;
+	void SetTransform(class USceneComponent* Component, const FTransform& Transform);
+	void Select(class USceneComponent* Component, bool* bImplementsUFocusable = nullptr);
+	void Deselect(class USceneComponent* Component, bool* bImplementsUFocusable = nullptr);
+	
 	//Used to Filter unwanted things from a list of OutHits.
-	virtual void FilterHits(TArray<FHitResult>& outHits) {}
+	void FilterHits(TArray<FHitResult>& outHits);
 
 public:
 
@@ -71,6 +75,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void ClearDomain();
 
+	//Gets the Start and End Points of the Mouse based on the Player Controller possessing this pawn
+	// returns true if outStartPoint and outEndPoint were given a successful value
+	bool GetMouseStartEndPoints(float TraceDistance, FVector& outStartPoint, FVector& outEndPoint);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -306,7 +313,7 @@ public:
 	void GetSelectedComponents(TArray<class USceneComponent*>& outComponentList
 		, class USceneComponent*& outGizmoPlacedComponent) const;
 
-	TArray<FSelectableComponent> GetSelectedComponents() const;
+	TArray<class USceneComponent*> GetSelectedComponents() const;
 
 	/*
 	* Makes an exact copy of the Actors that are owners of the components and makes
@@ -321,13 +328,18 @@ public:
 
 protected:
 
-	void CloneFromList(const TArray<FSelectableComponent>& ComponentList, bool bSelectNewClones);
+	TArray<class USceneComponent*> CloneFromList(
+		const TArray<class USceneComponent*>& ComponentList
+		, bool bSelectNewClones);
 
 private:
 
-	void CloneActors(const TArray<AActor*>& Actors, bool bSelectNewClones);
+	TArray<class USceneComponent*> CloneActors(
+		const TArray<AActor*>& Actors
+		, bool bSelectNewClones);
 
-	void CloneComponents(const TArray<class USceneComponent*>& Components
+	TArray<class USceneComponent*> CloneComponents(
+		const TArray<class USceneComponent*>& Components
 		, bool bSelectNewClones);
 
 public:
@@ -422,10 +434,257 @@ private:
 	//Resets the transform to all Zeros (including Scale)
 	static void ResetDeltaTransform(FTransform& Transform);
 
-protected:
-	
-	FTransform LastUpdatedDeltaTransform;
+	void SetDomain(ETransformationDomain Domain);
 
+public:
+
+
+	/* 
+	* Replicated Function
+	* Calls ServerTracBbyObjects instead.
+	* @see MouseTraceByObjectTypes
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ReplicatedMouseTraceByObjectTypes(float TraceDistance
+		, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
+		, bool bAppendObjects = false);
+
+	/*
+	* Replicated Function
+	* Calls ServerTraceByChannel instead.
+	* @see MouseTraceByChannel
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ReplicatedMouseTraceByChannel(float TraceDistance
+		, TEnumAsByte<ECollisionChannel> CollisionChannel
+		, bool bAppendObjects = false);
+
+	/*
+	* Replicated Function
+	* Calls ServerTraceByProfile instead.
+	* @see MouseTraceByProfile
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ReplicatedMouseTraceByProfile(float TraceDistance
+		, const FName& ProfileName
+		, bool bAppendObjects = false);
+
+	/*
+	* ServerCall
+	* @ see TraceByObjectTypes
+	*/
+	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerTraceByObjectTypes(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
+		, bool bAppendObjects);
+
+	//TRACE BY OBJECT TYPES
+	bool ServerTraceByObjectTypes_Validate(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
+		, bool bAppendObjects) { return true; }
+
+	void ServerTraceByObjectTypes_Implementation(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
+		, bool bAppendObjects);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastTraceByObjectTypes(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
+		, bool bAppendObjects);
+
+	void MulticastTraceByObjectTypes_Implementation(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
+		, bool bAppendObjects);
+
+
+	/*
+	* ServerCall
+	* @ see TraceByChannel
+	*/
+	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerTraceByChannel(const FVector& StartLocation
+		, const FVector& EndLocation
+		, ECollisionChannel TraceChannel
+		, bool bAppendObjects);
+
+	bool ServerTraceByChannel_Validate(const FVector& StartLocation
+		, const FVector& EndLocation
+		, ECollisionChannel TraceChannel
+		, bool bAppendObjects) { return true; }
+
+	void ServerTraceByChannel_Implementation(const FVector& StartLocation
+		, const FVector& EndLocation
+		, ECollisionChannel TraceChannel
+		, bool bAppendObjects);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastTraceByChannel(const FVector& StartLocation
+		, const FVector& EndLocation
+		, ECollisionChannel TraceChannel
+		, bool bAppendObjects);
+
+	void MulticastTraceByChannel_Implementation(const FVector& StartLocation
+		, const FVector& EndLocation
+		, ECollisionChannel TraceChannel
+		, bool bAppendObjects);
+
+	/*
+	* ServerCall
+	* @ see TraceByProfile
+	*/
+	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerTraceByProfile(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const FName& ProfileName
+		, bool bAppendObjects);
+
+	bool ServerTraceByProfile_Validate(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const FName& ProfileName
+		, bool bAppendObjects) { return true; }
+
+	void ServerTraceByProfile_Implementation(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const FName& ProfileName
+		, bool bAppendObjects);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastTraceByProfile(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const FName& ProfileName
+		, bool bAppendObjects);
+
+	void MulticastTraceByProfile_Implementation(const FVector& StartLocation
+		, const FVector& EndLocation
+		, const FName& ProfileName
+		, bool bAppendObjects);
+
+
+	void ReplicateTraceResult(bool bTraceSuccessful, bool bAppendObjects);
+
+	/*
+	* ServerCall
+	* @ see ClearDomain
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerClearDomain();
+
+	bool ServerClearDomain_Validate() { return true; }
+	void ServerClearDomain_Implementation();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastClearDomain();
+	void MulticastClearDomain_Implementation();
+
+	/*
+	* ServerCall
+	* @ see ApplyTransform
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerApplyTransform(const FTransform& DeltaTransform);
+	bool ServerApplyTransform_Validate(const FTransform& DeltaTransform) { return true; }
+	void ServerApplyTransform_Implementation(const FTransform& DeltaTransform);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastApplyTransform(const FTransform& DeltaTransform);
+	void MulticastApplyTransform_Implementation(const FTransform& DeltaTransform);
+
+	/*
+	* Calls the ServerClearDomain.
+	* Then it calls ServerApplyTransform and Resets the Accumulated Network Transform.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void FinishTransform();
+
+	/*
+	* ServerCall
+	* @ see DeselectAll
+	*/
+	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerDeselectAll(bool bDestroySelected);
+	bool ServerDeselectAll_Validate(bool bDestroySelected) { return true; }
+	void ServerDeselectAll_Implementation(bool bDestroySelected);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastDeselectAll(bool bDestroySelected);
+	void MulticastDeselectAll_Implementation(bool bDestroySelected);
+
+
+	/*
+	* ServerCall
+	* @ see SetSpaceType
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerSetSpaceType(ESpaceType Space);
+	bool ServerSetSpaceType_Validate(ESpaceType Space) { return true; }
+	void ServerSetSpaceType_Implementation(ESpaceType Space);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSetSpaceType(ESpaceType Space);
+	void MulticastSetSpaceType_Implementation(ESpaceType Space);
+
+	/*
+	* ServerCall
+	* @ see CloneSelected
+	*/
+	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerCloneSelected(bool bSelectNewClones = true
+		, bool bAppendObjects = false);
+
+	bool ServerCloneSelected_Validate(bool bSelectNewClones
+		, bool bAppendObjects) { return true; }
+
+	void ServerCloneSelected_Implementation(bool bSelectNewClones
+		, bool bAppendObjects);
+
+	void CheckUnreplicatedActors();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastNewActorClones(const TArray<AActor*>& Actors);
+	void MulticastNewActorClones_Implementation(const TArray<AActor*>& Actors);
+
+
+	/*
+	* ServerCall
+	* @ see SetDomain
+	*/
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void ServerSetDomain(ETransformationDomain Domain);
+	bool ServerSetDomain_Validate(ETransformationDomain Domain) { return true; }
+	void ServerSetDomain_Implementation(ETransformationDomain Domain);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastSetDomain(ETransformationDomain Domain);
+	void MulticastSetDomain_Implementation(ETransformationDomain Domain);
+
+
+	//Networking Variables
+private:
+
+	/*
+	* Ignore Non-Replicated Objects means that the objects that do not satisfy
+	* the replication conditions will become unselectable. This only takes effect if using the ServerTracing
+	* The Replication Conditions:
+	* - For an actor, replicating must be on
+	* - For a component, both its owner and itself need to be replicating
+	*/
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Replicated Runtime Transformer", meta = (AllowPrivateAccess = "true"))
+	bool bIgnoreNonReplicatedObjects;
+
+	FTransform	NetworkDeltaTransform;
+
+	//List of actors that need replication but haven't been replicated yet
+	TArray<AActor*> UnreplicatedActorClones;
+
+	FTimerHandle	CheckUnrepTimerHandle;
+
+
+	//Other Vars
 private:
 
 	//The Current Space being used, whether it is Local or World.
@@ -478,7 +737,7 @@ private:
 	 * Array storing Selected Components. Although a quick O(1) removal is needed (like a Set),
 	 * it is Crucial that we maintain the order of the elements as they were selected
 	 */
-	TArray<FSelectableComponent> SelectedComponents;
+	TArray<class USceneComponent*> SelectedComponents;
 
 	/*
 	* Map storing the Snap values for each transformation
