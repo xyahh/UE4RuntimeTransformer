@@ -89,14 +89,14 @@ public:
 
 	 * @param CollisionChannels - All the Channels to be considering during Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByObjectTypes(float TraceDistance
 		, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 		, TArray<AActor*> IgnoredActors
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -108,14 +108,14 @@ public:
 
 	 * @param TraceChannel - The Ray Collision Channel to be Considered in the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByChannel(float TraceDistance 
 		, TEnumAsByte<ECollisionChannel> TraceChannel
 		, TArray<AActor*> IgnoredActors
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -127,14 +127,14 @@ public:
 
 	 * @param ProfileName - The Profile Name to be used during the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool MouseTraceByProfile(float TraceDistance
 		, const FName& ProfileName
 		, TArray<AActor*> IgnoredActors
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -145,7 +145,7 @@ public:
 	 * @param EndLocation - the ending location of the trace, in World Space
 	 * @param CollisionChannels - All the Channels to be considering during Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
@@ -153,7 +153,7 @@ public:
 		, const FVector& EndLocation
 		, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
 		, TArray<AActor*> IgnoredActors
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/**
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
@@ -164,7 +164,7 @@ public:
 	 * @param EndLocation - the ending location of the trace, in World Space
 	 * @param TraceChannel - The Ray Collision Channel to be Considered in the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
@@ -172,7 +172,7 @@ public:
 		, const FVector& EndLocation
 		, TEnumAsByte<ECollisionChannel> TraceChannel
 		, TArray<AActor*> IgnoredActors
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 
 	/**
@@ -184,7 +184,7 @@ public:
 	 * @param EndLocation - the ending location of the trace, in World Space
 	 * @param ProfileName - The Profile Name to be used during the Trace
 	 * @param Ignored Actors	- The Actors to be Ignored during trace
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	 * @return bool Whether there was an Object traced successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
@@ -192,7 +192,7 @@ public:
 		, const FVector& EndLocation
 		, const FName& ProfileName
 		, TArray<AActor*> IgnoredActors
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	// Update every Frame
 	// Checks for Mouse Update
@@ -226,11 +226,11 @@ public:
 	 * but can be called manually if you wish to provide your own list of Hit Results (e.g. tracing with different configuration/method)
 	 *
 	 * @param HitResults - a list of the FHitResults that were generated by LineTracing
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	bool HandleTracedObjects(const TArray<FHitResult>& HitResults
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/*
 	 * Called when the Gizmo State has changed (i.e. Domain has changed)
@@ -321,10 +321,10 @@ public:
 	
 	* Don't spam this :)
 	* @param bSelectNewClones - whether to add the new clones to the Selection
-	* @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	* @param bAppendToList - If the New Clones are selected, whether to Append them to the List or Clear the previous Selections
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void CloneSelected(bool bSelectNewClones = true, bool bAppendObjects = false);
+	void CloneSelected(bool bSelectNewClones = true, bool bAppendToList = false);
 
 protected:
 
@@ -348,18 +348,18 @@ public:
 	/**
 	 * Select Component adds a given Component to a list of components that will be used for the Runtime Transforms
 	 * @param Component The component to add to the list.
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void SelectComponent(class USceneComponent* Component, bool bAppendObjects = false);
+	void SelectComponent(class USceneComponent* Component, bool bAppendToList = false);
 
 	/**
 	 * Select Actor adds the Actor's Root Component to a list of components that will be used for the Runtime Transforms
 	 * @param Actor The Actor whose Root Component will be added to the list.
-	 * @param bAppendObjects - If a selection happens, whether to append to the previously selected components or not
+	 * @param bAppendToList - If a selection happens, whether to append to the previously selected components or not
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
-	void SelectActor(AActor* Actor, bool bAppendObjects = false);
+	void SelectActor(AActor* Actor, bool bAppendToList = false);
 
 	/**
 	 * Selects all the Components in given list.
@@ -367,7 +367,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void SelectMultipleComponents(const TArray<class USceneComponent*>& Components
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/**
 	 * Selects all the Root Components of the Actors in given list.
@@ -375,7 +375,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void SelectMultipleActors(const TArray<AActor*>& Actors
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/**
 	 * Deselects a given Component, if found on the list.
@@ -450,7 +450,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ReplicatedMouseTraceByObjectTypes(float TraceDistance
 		, TArray<TEnumAsByte<ECollisionChannel>> CollisionChannels
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/*
 	* Replicated Function
@@ -460,7 +460,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ReplicatedMouseTraceByChannel(float TraceDistance
 		, TEnumAsByte<ECollisionChannel> CollisionChannel
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	/*
 	* Replicated Function
@@ -470,10 +470,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ReplicatedMouseTraceByProfile(float TraceDistance
 		, const FName& ProfileName
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	TArray<AActor*> GetIgnoredActorsForServerTrace() const;
-	void ReplicateServerTraceResults(bool bTraceSuccessful, bool bAppendObjects);
+
+	/*
+	 * Prints all the information regarding the Currently Selected Components
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Debug Runtime Transformer")
+	void LogSelectedComponents();
 
 	/*
 	* ServerCall
@@ -483,18 +488,18 @@ public:
 	void ServerTraceByObjectTypes(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-		, bool bAppendObjects);
+		, bool bAppendToList);
 
 	//TRACE BY OBJECT TYPES
 	bool ServerTraceByObjectTypes_Validate(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-		, bool bAppendObjects) { return true; }
+		, bool bAppendToList) { return true; }
 
 	void ServerTraceByObjectTypes_Implementation(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-		, bool bAppendObjects);
+		, bool bAppendToList);
 
 
 	/*
@@ -505,17 +510,17 @@ public:
 	void ServerTraceByChannel(const FVector& StartLocation
 		, const FVector& EndLocation
 		, ECollisionChannel TraceChannel
-		, bool bAppendObjects);
+		, bool bAppendToList);
 
 	bool ServerTraceByChannel_Validate(const FVector& StartLocation
 		, const FVector& EndLocation
 		, ECollisionChannel TraceChannel
-		, bool bAppendObjects) { return true; }
+		, bool bAppendToList) { return true; }
 
 	void ServerTraceByChannel_Implementation(const FVector& StartLocation
 		, const FVector& EndLocation
 		, ECollisionChannel TraceChannel
-		, bool bAppendObjects);
+		, bool bAppendToList);
 
 
 	/*
@@ -526,17 +531,17 @@ public:
 	void ServerTraceByProfile(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const FName& ProfileName
-		, bool bAppendObjects);
+		, bool bAppendToList);
 
 	bool ServerTraceByProfile_Validate(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const FName& ProfileName
-		, bool bAppendObjects) { return true; }
+		, bool bAppendToList) { return true; }
 
 	void ServerTraceByProfile_Implementation(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const FName& ProfileName
-		, bool bAppendObjects);
+		, bool bAppendToList);
 
 
 	/*
@@ -606,19 +611,15 @@ public:
 	*/
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerCloneSelected(bool bSelectNewClones = true
-		, bool bAppendObjects = false);
+		, bool bAppendToList = false);
 
 	bool ServerCloneSelected_Validate(bool bSelectNewClones
-		, bool bAppendObjects) { return true; }
+		, bool bAppendToList) { return true; }
 
 	void ServerCloneSelected_Implementation(bool bSelectNewClones
-		, bool bAppendObjects);
+		, bool bAppendToList);
 
 	void CheckUnreplicatedActors();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastNewActorClones(const TArray<AActor*>& Actors, bool bAppendObjects);
-	void MulticastNewActorClones_Implementation(const TArray<AActor*>& Actors, bool bAppendObjects);
 
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetDomain(ETransformationDomain Domain);
@@ -651,8 +652,11 @@ private:
 
 	FTransform	NetworkDeltaTransform;
 
-	//List of actors that need replication but haven't been replicated yet
+	//List of clone actors that need replication but haven't been replicated yet
 	TArray<AActor*> UnreplicatedActorClones;
+
+	//List of clone actors that replicated (handled once unreplicated actor clones is empty)
+	TArray<AActor*> ReplicatedActorClones;
 
 	FTimerHandle	CheckUnrepTimerHandle;
 
@@ -768,7 +772,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bComponentBased;
 
-	//Property that is used to Store the value of bAppendObjects when Cloning for Networking (since it's not an Immediate procedure)
+	//Property that is used to Store the value of bAppendToList when Cloning for Networking (since it's not an Immediate procedure)
 	//Only relevant in the Server
-	bool bAppendObjectsForClones;
+	bool bAppendClonesToList;
 };
