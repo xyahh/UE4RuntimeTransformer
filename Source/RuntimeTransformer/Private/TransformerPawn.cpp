@@ -32,8 +32,8 @@ ATransformerPawn::ATransformerPawn()
 	RotationGizmoClass		= ARotationGizmo::StaticClass();
 	ScaleGizmoClass			= AScaleGizmo::StaticClass();
 
-	bReplicates = true;
-	bIgnoreNonReplicatedObjects = true;
+	bReplicates = false;
+	bIgnoreNonReplicatedObjects = false;
 
 	ResetDeltaTransform(AccumulatedDeltaTransform);
 	ResetDeltaTransform(NetworkDeltaTransform);
@@ -103,7 +103,6 @@ void ATransformerPawn::FilterHits(TArray<FHitResult>& outHits)
 	//eliminate all outHits that have non-replicated objects
 	if (bIgnoreNonReplicatedObjects)
 	{
-		bool bComponent = GetComponentBased();
 		TArray<FHitResult> checkHits = outHits;
 		for (int32 i = 0; i < checkHits.Num(); ++i)
 		{
@@ -113,7 +112,7 @@ void ATransformerPawn::FilterHits(TArray<FHitResult>& outHits)
 
 			if (checkHits[i].Actor->IsSupportedForNetworking())
 			{
-				if (bComponent)
+				if (bComponentBased)
 				{
 					if (checkHits[i].Component->IsSupportedForNetworking())
 						continue; //components - actor owner + themselves need to replicate
@@ -480,6 +479,11 @@ void ATransformerPawn::SetComponentBased(bool bIsComponentBased)
 		SelectMultipleActors(actors, false);
 	}
 
+}
+
+void ATransformerPawn::SetRotateOnLocalAxis(bool bRotateLocalAxis)
+{
+	bRotateOnLocalAxis = bRotateLocalAxis;
 }
 
 void ATransformerPawn::SetTransformationType(ETransformationType TransformationType)
@@ -961,16 +965,25 @@ void ATransformerPawn::ReplicatedMouseTraceByObjectTypes(float TraceDistance
 			, CollisionChannels
 			, TArray<AActor*>(), bAppendToList);
 
-		if (!bTraceSuccessful && !bAppendToList)
-			ServerDeselectAll(false);
-
-		// If a Local Trace was on a Gizmo, just tell the Server that we 
-		// have hit our Gizmo and just change the Domain there.
-		// Else, do the Server Trace
-		if (CurrentDomain == ETransformationDomain::TD_None)
-			ServerTraceByObjectTypes(start, end, CollisionChannels, bAppendToList);
+		//Server
+		if (Role == ROLE_Authority)
+			ReplicateServerTraceResults(bTraceSuccessful, bAppendToList);
+		//Client
 		else
-			ServerSetDomain(CurrentDomain);
+		{
+			if (!bTraceSuccessful && !bAppendToList)
+				ServerDeselectAll(false);
+
+			// If a Local Trace was on a Gizmo, just tell the Server that we 
+			// have hit our Gizmo and just change the Domain there.
+			// Else, do the Server Trace
+			if (CurrentDomain == ETransformationDomain::TD_None)
+				ServerTraceByObjectTypes(start, end, CollisionChannels, bAppendToList);
+			else
+				ServerSetDomain(CurrentDomain);
+		}
+
+		
 	}
 }
 
@@ -984,16 +997,23 @@ void ATransformerPawn::ReplicatedMouseTraceByChannel(float TraceDistance
 			, CollisionChannel
 			, TArray<AActor*>(), bAppendToList);
 
-		if (!bTraceSuccessful && !bAppendToList)
-			ServerDeselectAll(false);
-
-		// If a Local Trace was on a Gizmo, just tell the Server that we 
-		// have hit our Gizmo and just change the Domain there.
-		// Else, do the Server Trace
-		if (CurrentDomain == ETransformationDomain::TD_None)
-			ServerTraceByChannel(start, end, CollisionChannel, bAppendToList);
+		//Server
+		if (Role == ROLE_Authority)
+			ReplicateServerTraceResults(bTraceSuccessful, bAppendToList);
+		//Client
 		else
-			ServerSetDomain(CurrentDomain);
+		{
+			if (!bTraceSuccessful && !bAppendToList)
+				ServerDeselectAll(false);
+
+			// If a Local Trace was on a Gizmo, just tell the Server that we 
+			// have hit our Gizmo and just change the Domain there.
+			// Else, do the Server Trace
+			if (CurrentDomain == ETransformationDomain::TD_None)
+				ServerTraceByChannel(start, end, CollisionChannel, bAppendToList);
+			else
+				ServerSetDomain(CurrentDomain);
+		}
 	}
 }
 
@@ -1007,16 +1027,23 @@ void ATransformerPawn::ReplicatedMouseTraceByProfile(float TraceDistance
 			, ProfileName
 			, TArray<AActor*>(), bAppendToList);
 
-		if (!bTraceSuccessful && !bAppendToList)
-			ServerDeselectAll(false);
-
-		// If a Local Trace was on a Gizmo, just tell the Server that we 
-		// have hit our Gizmo and just change the Domain there.
-		// Else, do the Server Trace
-		if (CurrentDomain == ETransformationDomain::TD_None)
-			ServerTraceByProfile(start, end, ProfileName, bAppendToList);
+		//Server
+		if (Role == ROLE_Authority)
+			ReplicateServerTraceResults(bTraceSuccessful, bAppendToList);
+		//Client
 		else
-			ServerSetDomain(CurrentDomain);
+		{
+			if (!bTraceSuccessful && !bAppendToList)
+				ServerDeselectAll(false);
+
+			// If a Local Trace was on a Gizmo, just tell the Server that we 
+			// have hit our Gizmo and just change the Domain there.
+			// Else, do the Server Trace
+			if (CurrentDomain == ETransformationDomain::TD_None)
+				ServerTraceByProfile(start, end, ProfileName, bAppendToList);
+			else
+				ServerSetDomain(CurrentDomain);
+		}		
 	}
 }
 
@@ -1029,6 +1056,14 @@ TArray<AActor*> ATransformerPawn::GetIgnoredActorsForServerTrace() const
 	if (Gizmo.IsValid())
 		ignoredActors.Add(Gizmo.Get());
 	return ignoredActors;
+}
+
+void ATransformerPawn::ReplicateServerTraceResults(bool bTraceSuccessful, bool bAppendToList)
+{
+	if (!bTraceSuccessful && !bAppendToList)
+		DeselectAll(false);
+	MulticastSetDomain(CurrentDomain);
+	MulticastSetSelectedComponents(SelectedComponents);
 }
 
 void ATransformerPawn::LogSelectedComponents()
@@ -1173,6 +1208,43 @@ void ATransformerPawn::MulticastSetSpaceType_Implementation(ESpaceType Space)
 {
 	SetSpaceType(Space);
 }
+
+
+
+void ATransformerPawn::ServerSetTransformationType_Implementation(ETransformationType Transformation)
+{
+	MulticastSetTransformationType(Transformation);
+}
+
+void ATransformerPawn::MulticastSetTransformationType_Implementation(ETransformationType Transformation)
+{
+	SetTransformationType(Transformation);
+}
+
+
+
+void ATransformerPawn::ServerSetComponentBased_Implementation(bool bIsComponentBased)
+{
+	MulticastSetComponentBased(bIsComponentBased);
+}
+
+void ATransformerPawn::MulticastSetComponentBased_Implementation(bool bIsComponentBased)
+{
+	SetComponentBased(bIsComponentBased);
+}
+
+
+
+void ATransformerPawn::ServerSetRotateOnLocalAxis_Implementation(bool bRotateLocalAxis)
+{
+	MulticastSetRotateOnLocalAxis(bRotateLocalAxis);
+}
+
+void ATransformerPawn::MulticastSetRotateOnLocalAxis_Implementation(bool bRotateLocalAxis)
+{
+	SetRotateOnLocalAxis(bRotateLocalAxis);
+}
+
 
 
 #include "TimerManager.h"

@@ -280,8 +280,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void SetComponentBased(bool bIsComponentBased);
 
-	bool GetComponentBased() const { return bComponentBased; }
+	/**
+	 * Whether to Set the System to Rotate Multiple Objects around their own axis (true)
+	 * or to work rotate around where the Gizmo is at (false)
 
+	 @see bRotateLocalAxis
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
+	void SetRotateOnLocalAxis(bool bRotateLocalAxis);
+
+	/**
+	 * Sets the Current Transformation (Translation, Rotation or Scale)
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Runtime Transformer")
 	void SetTransformationType(ETransformationType TransformationType);
 	
@@ -474,6 +484,7 @@ public:
 
 	TArray<AActor*> GetIgnoredActorsForServerTrace() const;
 
+	void ReplicateServerTraceResults(bool bTraceSuccessful, bool bAppendToList);
 	/*
 	 * Prints all the information regarding the Currently Selected Components
 	*/
@@ -607,6 +618,45 @@ public:
 
 	/*
 	* ServerCall
+	* @ see SetTransformationType
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerSetTransformationType(ETransformationType Transformation);
+	bool ServerSetTransformationType_Validate(ETransformationType Transformation) { return true; }
+	void ServerSetTransformationType_Implementation(ETransformationType Transformation);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSetTransformationType(ETransformationType Transformation);
+	void MulticastSetTransformationType_Implementation(ETransformationType Transformation);
+
+	/*
+	* ServerCall
+	* @ see SetComponentBased
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerSetComponentBased(bool bIsComponentBased);
+	bool ServerSetComponentBased_Validate(bool bIsComponentBased) { return true; }
+	void ServerSetComponentBased_Implementation(bool bIsComponentBased);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSetComponentBased(bool bIsComponentBased);
+	void MulticastSetComponentBased_Implementation(bool bIsComponentBased);
+
+	/*
+	* ServerCall
+	* @ see SetRotateOnLocalAxis
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerSetRotateOnLocalAxis(bool bRotateLocalAxis);
+	bool ServerSetRotateOnLocalAxis_Validate(bool bRotateLocalAxis) { return true; }
+	void ServerSetRotateOnLocalAxis_Implementation(bool bRotateLocalAxis);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSetRotateOnLocalAxis(bool bRotateLocalAxis);
+	void MulticastSetRotateOnLocalAxis_Implementation(bool bRotateLocalAxis);
+
+	/*
+	* ServerCall
 	* @ see CloneSelected
 	*/
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
@@ -720,7 +770,7 @@ private:
 	* Map storing the Snap values for each transformation
 	* bSnappingEnabled must be true AND, the value for the current transform MUST NOT be 0 for these values to take effect.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	TMap<ETransformationType, float> SnappingValues;
 
 	/**
@@ -730,7 +780,7 @@ private:
 
 	* @see SetSnappingValue function & SnappingValues Map var
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	TMap<ETransformationType, bool> SnappingEnabled;
 
 
@@ -740,14 +790,14 @@ private:
 	* if false, no movement transformations will be attempted on Static/Stationary Components
 
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bForceMobility;
 
 	/*
 	 * This property only matters when multiple objects are selected.
 	 * Whether multiple objects should rotate on their local axes (true) or on the axes the Gizmo is in (false)
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bRotateOnLocalAxis;
 
 	/**
@@ -757,11 +807,11 @@ private:
 
 	 * IN BOTH Situations, the UFocusable Objects have IFocusable::OnNewDeltaTransformation called.
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bTransformUFocusableObjects;
 
 	//Property that checks whether a CLICK on an already selected object should deselect the object or not.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bToggleSelectedInMultiSelection;
 
 	/*
