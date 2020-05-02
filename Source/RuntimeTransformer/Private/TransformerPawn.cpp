@@ -53,7 +53,7 @@ void ATransformerPawn::GetLifetimeReplicatedProps(
 	TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ATransformerPawn, bIgnoreNonReplicatedObjects);
+	//Fill here if we need to replicate Properties. For now, nothing needs constant replication/check
 }
 
 UObject* ATransformerPawn::GetUFocusable(USceneComponent* Component) const
@@ -71,7 +71,7 @@ void ATransformerPawn::SetTransform(USceneComponent* Component, const FTransform
 	if (!Component) return;
 	if (UObject* focusableObject = GetUFocusable(Component))
 	{
-		IFocusableObject::Execute_OnNewTransformation(focusableObject, Component, Transform, bComponentBased);
+		IFocusableObject::Execute_OnNewTransformation(focusableObject, this, Component, Transform, bComponentBased);
 		if (bTransformUFocusableObjects)
 			Component->SetWorldTransform(Transform);
 	}
@@ -84,7 +84,7 @@ void ATransformerPawn::Select(USceneComponent* Component, bool* bImplementsUFocu
 {
 	UObject* focusableObject = GetUFocusable(Component);
 	if (focusableObject)
-		IFocusableObject::Execute_Focus(focusableObject, Component, bComponentBased);
+		IFocusableObject::Execute_Focus(focusableObject, this, Component, bComponentBased);
 	if (bImplementsUFocusable)
 		*bImplementsUFocusable = !!focusableObject;
 }
@@ -93,7 +93,7 @@ void ATransformerPawn::Deselect(USceneComponent* Component, bool* bImplementsUFo
 {
 	UObject* focusableObject = GetUFocusable(Component);
 	if (focusableObject)
-		IFocusableObject::Execute_Unfocus(focusableObject, Component, bComponentBased);
+		IFocusableObject::Execute_Unfocus(focusableObject, this, Component, bComponentBased);
 	if (bImplementsUFocusable)
 		*bImplementsUFocusable = !!focusableObject;
 }
@@ -410,9 +410,7 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 				newTransform = Gizmo->GetSnappedTransformPerComponent(componentTransform
 					, newTransform, CurrentDomain, *snappingValue);
 
-			if (sc->Mobility != EComponentMobility::Type::Movable)
-				sc->SetMobility(EComponentMobility::Type::Movable);
-
+			sc->SetMobility(EComponentMobility::Type::Movable);
 			SetTransform(sc, newTransform);
 		}
 		else
@@ -530,7 +528,7 @@ void ATransformerPawn::CloneSelected(bool bSelectNewClones
 {
 	if (Role < ROLE_Authority)
 		UE_LOG(LogRuntimeTransformer, Warning
-			, TEXT("Cloning in a Non-Authority! Please use the ReplicatedTransformerPawn Clone RPCs instead"));
+			, TEXT("Cloning in a Non-Authority! Please use the Clone RPCs instead"));
 
 	auto ComponentListCopy = SelectedComponents;
 	if (false == bAppendToList)
@@ -593,7 +591,7 @@ TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor
 		spawnParams.Template = templateActor;
 		spawnParams.Instigator = this;
 		spawnParams.Owner = this;
-
+		
 		if (AActor* actor = world->SpawnActor(templateActor->GetClass()
 			, &spawnTransform, spawnParams))
 		{
@@ -1100,7 +1098,13 @@ void ATransformerPawn::LogSelectedComponents()
 		, TEXT("******************** SELECTED COMPONENTS LOG END   ********************"));
 }
 
-
+bool ATransformerPawn::ServerTraceByObjectTypes_Validate(
+	const FVector& StartLocation, const FVector& EndLocation
+	, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
+	, bool bAppendToList) 
+{ 
+	return true; 
+}
 
 void ATransformerPawn::ServerTraceByObjectTypes_Implementation(
 	const FVector& StartLocation, const FVector& EndLocation
@@ -1116,6 +1120,15 @@ void ATransformerPawn::ServerTraceByObjectTypes_Implementation(
 
 	MulticastSetDomain(CurrentDomain);
 	MulticastSetSelectedComponents(SelectedComponents);
+}
+
+
+
+bool ATransformerPawn::ServerTraceByChannel_Validate(
+	const FVector& StartLocation, const FVector& EndLocation
+	, ECollisionChannel TraceChannel, bool bAppendToList)
+{
+	return true;
 }
 
 void ATransformerPawn::ServerTraceByChannel_Implementation(
@@ -1134,6 +1147,14 @@ void ATransformerPawn::ServerTraceByChannel_Implementation(
 }
 
 
+
+bool ATransformerPawn::ServerTraceByProfile_Validate(const FVector& StartLocation
+	, const FVector& EndLocation, const FName& ProfileName, bool bAppendToList) 
+{ 
+	return true; 
+}
+
+
 void ATransformerPawn::ServerTraceByProfile_Implementation(
 	const FVector& StartLocation, const FVector& EndLocation
 	, const FName& ProfileName, bool bAppendToList)
@@ -1149,6 +1170,10 @@ void ATransformerPawn::ServerTraceByProfile_Implementation(
 	MulticastSetSelectedComponents(SelectedComponents);
 }
 
+bool ATransformerPawn::ServerClearDomain_Validate() 
+{ 
+	return true; 
+}
 void ATransformerPawn::ServerClearDomain_Implementation()
 {
 	MulticastClearDomain();
@@ -1159,21 +1184,20 @@ void ATransformerPawn::MulticastClearDomain_Implementation()
 	ClearDomain();
 }
 
-
-
-void ATransformerPawn::ServerApplyTransform_Implementation(
-	const FTransform& DeltaTransform)
+bool ATransformerPawn::ServerApplyTransform_Validate(const FTransform& DeltaTransform)
+{
+	return true;
+}
+void ATransformerPawn::ServerApplyTransform_Implementation(const FTransform& DeltaTransform)
 {
 	MulticastApplyTransform(DeltaTransform);
 }
 
-void ATransformerPawn::MulticastApplyTransform_Implementation(
-	const FTransform& DeltaTransform)
+void ATransformerPawn::MulticastApplyTransform_Implementation(const FTransform& DeltaTransform)
 {
 	if (Controller && !Controller->IsLocalController()) //only apply to others
 		ApplyDeltaTransform(DeltaTransform);
 }
-
 
 
 void ATransformerPawn::ReplicateFinishTransform()
@@ -1183,22 +1207,24 @@ void ATransformerPawn::ReplicateFinishTransform()
 	ResetDeltaTransform(NetworkDeltaTransform);
 }
 
-
-
-void ATransformerPawn::ServerDeselectAll_Implementation(
-	bool bDestroySelected)
+bool ATransformerPawn::ServerDeselectAll_Validate(bool bDestroySelected) 
+{ 
+	return true; 
+}
+void ATransformerPawn::ServerDeselectAll_Implementation(bool bDestroySelected)
 {
 	MulticastDeselectAll(bDestroySelected);
 }
 
-void ATransformerPawn::MulticastDeselectAll_Implementation(
-	bool bDestroySelected)
+void ATransformerPawn::MulticastDeselectAll_Implementation(bool bDestroySelected)
 {
 	DeselectAll(bDestroySelected);
 }
 
-
-
+bool ATransformerPawn::ServerSetSpaceType_Validate(ESpaceType Space) 
+{ 
+	return true; 
+}
 void ATransformerPawn::ServerSetSpaceType_Implementation(ESpaceType Space)
 {
 	MulticastSetSpaceType(Space);
@@ -1210,7 +1236,10 @@ void ATransformerPawn::MulticastSetSpaceType_Implementation(ESpaceType Space)
 }
 
 
-
+bool ATransformerPawn::ServerSetTransformationType_Validate(ETransformationType Transformation) 
+{ 
+	return true; 
+}
 void ATransformerPawn::ServerSetTransformationType_Implementation(ETransformationType Transformation)
 {
 	MulticastSetTransformationType(Transformation);
@@ -1221,8 +1250,10 @@ void ATransformerPawn::MulticastSetTransformationType_Implementation(ETransforma
 	SetTransformationType(Transformation);
 }
 
-
-
+bool ATransformerPawn::ServerSetComponentBased_Validate(bool bIsComponentBased) 
+{
+	return true; 
+}
 void ATransformerPawn::ServerSetComponentBased_Implementation(bool bIsComponentBased)
 {
 	MulticastSetComponentBased(bIsComponentBased);
@@ -1233,8 +1264,10 @@ void ATransformerPawn::MulticastSetComponentBased_Implementation(bool bIsCompone
 	SetComponentBased(bIsComponentBased);
 }
 
-
-
+bool ATransformerPawn::ServerSetRotateOnLocalAxis_Validate(bool bRotateLocalAxis) 
+{ 
+	return true; 
+}
 void ATransformerPawn::ServerSetRotateOnLocalAxis_Implementation(bool bRotateLocalAxis)
 {
 	MulticastSetRotateOnLocalAxis(bRotateLocalAxis);
@@ -1245,9 +1278,11 @@ void ATransformerPawn::MulticastSetRotateOnLocalAxis_Implementation(bool bRotate
 	SetRotateOnLocalAxis(bRotateLocalAxis);
 }
 
-
-
 #include "TimerManager.h"
+bool ATransformerPawn::ServerCloneSelected_Validate(bool bSelectNewClones, bool bAppendToList)
+{
+	return true;
+}
 void ATransformerPawn::ServerCloneSelected_Implementation(bool bSelectNewClones
 	, bool bAppendToList)
 {
@@ -1319,7 +1354,10 @@ void ATransformerPawn::CheckUnreplicatedActors()
 		
 }
 
-
+bool ATransformerPawn::ServerSetDomain_Validate(ETransformationDomain Domain)
+{
+	return true;
+}
 void ATransformerPawn::ServerSetDomain_Implementation(ETransformationDomain Domain)
 {
 	MulticastSetDomain(Domain);

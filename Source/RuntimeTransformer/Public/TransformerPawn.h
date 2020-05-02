@@ -28,9 +28,20 @@ public:
 
 private:
 
+	//Gets the UFocusable Object. If ComponentBased, returns the UFocusable Component or nullptr (if it doesn't implement)
+	// if ActorBased, returns the UFosuable Owner Actor or nullptr (if it doesn't implement)
 	class UObject* GetUFocusable(class USceneComponent* Component) const;
+
+	//Sets the Transform for a Given Component and calls the 
+	//Ufocusable transform function called if it implements the Interface
 	void SetTransform(class USceneComponent* Component, const FTransform& Transform);
+
+	//Called when the Component is added to the SelectedComponent List
+	// Calls the IFocusableObject::Focus if the Component implements the UFocusable interface
 	void Select(class USceneComponent* Component, bool* bImplementsUFocusable = nullptr);
+
+	// Called when the Component is removed from the SelectedComponent List
+	// Calls the IFocusableObject::Unfocus if the Component implements the UFocusable interface
 	void Deselect(class USceneComponent* Component, bool* bImplementsUFocusable = nullptr);
 	
 	//Used to Filter unwanted things from a list of OutHits.
@@ -451,11 +462,14 @@ private:
 
 public:
 
-
 	/* 
-	* Replicated Function
-	* Calls ServerTracBbyObjects instead.
-	* @see MouseTraceByObjectTypes
+	* Function Similar to MouseTraceByObjectTypes
+	* Performs a Local Trace for Gizmos (since they appear differently for each player)
+	* and then Performs a Server Trace for the rest of the Objects found in the Server.
+
+	* ONLY CALL THIS if the PAWN has a Valid Player Controller. 
+	
+	* @see MouseTraceByObjectTypes for Param Desc
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ReplicatedMouseTraceByObjectTypes(float TraceDistance
@@ -463,9 +477,13 @@ public:
 		, bool bAppendToList = false);
 
 	/*
-	* Replicated Function
-	* Calls ServerTraceByChannel instead.
-	* @see MouseTraceByChannel
+	* Function Similar to MouseTraceByChannel
+	* Performs a Local Trace for Gizmos (since they appear differently for each player)
+	* and then Performs a Server Trace for the rest of the Objects found in the Server.
+
+	* ONLY CALL THIS if the PAWN has a Valid Player Controller.
+	
+	* @see MouseTraceByChannel for Param Desc
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ReplicatedMouseTraceByChannel(float TraceDistance
@@ -473,219 +491,225 @@ public:
 		, bool bAppendToList = false);
 
 	/*
-	* Replicated Function
-	* Calls ServerTraceByProfile instead.
-	* @see MouseTraceByProfile
+	* Function Similar to MouseTraceByProfile
+	* Performs a Local Trace for Gizmos (since they appear differently for each player)
+	* and then Performs a Server Trace for the rest of the Objects found in the Server.
+
+	* ONLY CALL THIS if the PAWN has a Valid Player Controller.
+
+	* @see MouseTraceByProfile for Param Desc
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ReplicatedMouseTraceByProfile(float TraceDistance
 		, const FName& ProfileName
 		, bool bAppendToList = false);
 
+	//Gets the List of Actors that will be ignored in the Server Trace(for now its only the current Gizmo of Actor)
+	//Since the Gizmo trace is handled locally (Gizmo appears differently to each player)
 	TArray<AActor*> GetIgnoredActorsForServerTrace() const;
 
+	//Syncs the Selected Components to the Clients (caller needs to be server)
 	void ReplicateServerTraceResults(bool bTraceSuccessful, bool bAppendToList);
+
 	/*
 	 * Prints all the information regarding the Currently Selected Components
-	*/
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Debug Runtime Transformer")
 	void LogSelectedComponents();
 
 	/*
-	* ServerCall
-	* @ see TraceByObjectTypes
-	*/
+	 * ServerCall, Unreliable. Trace is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see TraceByObjectTypes
+	 */
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerTraceByObjectTypes(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
 		, bool bAppendToList);
 
-	//TRACE BY OBJECT TYPES
-	bool ServerTraceByObjectTypes_Validate(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-		, bool bAppendToList) { return true; }
-
-	void ServerTraceByObjectTypes_Implementation(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
-		, bool bAppendToList);
-
-
 	/*
-	* ServerCall
-	* @ see TraceByChannel
-	*/
+	 * ServerCall, Unreliable. Trace is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see TraceByChannel
+	 */
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerTraceByChannel(const FVector& StartLocation
 		, const FVector& EndLocation
 		, ECollisionChannel TraceChannel
 		, bool bAppendToList);
 
-	bool ServerTraceByChannel_Validate(const FVector& StartLocation
-		, const FVector& EndLocation
-		, ECollisionChannel TraceChannel
-		, bool bAppendToList) { return true; }
-
-	void ServerTraceByChannel_Implementation(const FVector& StartLocation
-		, const FVector& EndLocation
-		, ECollisionChannel TraceChannel
-		, bool bAppendToList);
-
-
 	/*
-	* ServerCall
-	* @ see TraceByProfile
-	*/
+	 * ServerCall, Unreliable. Trace is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see TraceByProfile
+	 */
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerTraceByProfile(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const FName& ProfileName
 		, bool bAppendToList);
 
-	bool ServerTraceByProfile_Validate(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const FName& ProfileName
-		, bool bAppendToList) { return true; }
-
-	void ServerTraceByProfile_Implementation(const FVector& StartLocation
-		, const FVector& EndLocation
-		, const FName& ProfileName
-		, bool bAppendToList);
-
 
 	/*
-	* ServerCall
-	* @ see ClearDomain
-	*/
+	 * ServerCall, Reliable. ClearDomain is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see ClearDomain
+	 */
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerClearDomain();
 
-	bool ServerClearDomain_Validate() { return true; }
-	void ServerClearDomain_Implementation();
-
-	UFUNCTION(NetMulticast, Unreliable)
+	/*
+	 * Multicast, Reliable. ClearDomain is performed in the Clients.
+	 * @ see ClearDomain
+	 */
+	UFUNCTION(NetMulticast, Reliable)
 	void MulticastClearDomain();
-	void MulticastClearDomain_Implementation();
 
 	/*
-	* ServerCall
-	* @ see ApplyTransform
-	*/
+	 * ServerCall, Reliable. ApplyTransform is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see ApplyTransform
+	 */
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerApplyTransform(const FTransform& DeltaTransform);
-	bool ServerApplyTransform_Validate(const FTransform& DeltaTransform) { return true; }
-	void ServerApplyTransform_Implementation(const FTransform& DeltaTransform);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastApplyTransform(const FTransform& DeltaTransform);
-	void MulticastApplyTransform_Implementation(const FTransform& DeltaTransform);
 
 	/*
-	* Calls the ServerClearDomain.
-	* Then it calls ServerApplyTransform and Resets the Accumulated Network Transform.
-	*/
+	 * Multicast, Reliable. ApplyTransform is performed in the Clients.
+	 * @ see ApplyTransform
+	 */
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastApplyTransform(const FTransform& DeltaTransform);
+
+	/*
+	 * Calls the ServerClearDomain.
+	 * Then it calls ServerApplyTransform and Resets the Accumulated Network Transform.
+
+	 * @see ServerClearDomain
+	 * @see ServerApplyTransform
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ReplicateFinishTransform();
 
 	/*
-	* ServerCall
-	* @ see DeselectAll
-	*/
+	 * ServerCall, Unreliable. DeselectAll is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see DeselectAll
+	 */
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerDeselectAll(bool bDestroySelected);
-	bool ServerDeselectAll_Validate(bool bDestroySelected) { return true; }
-	void ServerDeselectAll_Implementation(bool bDestroySelected);
 
+	/*
+	 * Multicast, Unreliable. DeselectAll is performed in the Clients.
+	 * @ see DeselectAll
+	 */
 	UFUNCTION(NetMulticast, Unreliable)
 	void MulticastDeselectAll(bool bDestroySelected);
-	void MulticastDeselectAll_Implementation(bool bDestroySelected);
 
 
 	/*
-	* ServerCall
-	* @ see SetSpaceType
-	*/
+	 * ServerCall, Reliable. SetSpaceType is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see SetSpaceType
+	 */
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetSpaceType(ESpaceType Space);
-	bool ServerSetSpaceType_Validate(ESpaceType Space) { return true; }
-	void ServerSetSpaceType_Implementation(ESpaceType Space);
 
+	/*
+	 * Multicast, Reliable. SetSpaceType is performed in the Clients.
+	 * @ see SetSpaceType
+	 */
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastSetSpaceType(ESpaceType Space);
-	void MulticastSetSpaceType_Implementation(ESpaceType Space);
 
 	/*
-	* ServerCall
-	* @ see SetTransformationType
-	*/
+	 * ServerCall, Reliable. SetTransformationType is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see SetTransformationType
+	 */
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetTransformationType(ETransformationType Transformation);
-	bool ServerSetTransformationType_Validate(ETransformationType Transformation) { return true; }
-	void ServerSetTransformationType_Implementation(ETransformationType Transformation);
 
+	/*
+	 * Multicast, Reliable. SetTransformationType is performed in the Clients.
+	 * @ see SetTransformationType
+	 */
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastSetTransformationType(ETransformationType Transformation);
-	void MulticastSetTransformationType_Implementation(ETransformationType Transformation);
 
 	/*
-	* ServerCall
-	* @ see SetComponentBased
-	*/
+	 * ServerCall, Reliable. SetComponentBased is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see SetComponentBased
+	 */
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetComponentBased(bool bIsComponentBased);
-	bool ServerSetComponentBased_Validate(bool bIsComponentBased) { return true; }
-	void ServerSetComponentBased_Implementation(bool bIsComponentBased);
 
+	/*
+	 * Multicast, Reliable. SetComponentBased is performed in the Clients.
+	 * @ see SetComponentBased
+	 */
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastSetComponentBased(bool bIsComponentBased);
-	void MulticastSetComponentBased_Implementation(bool bIsComponentBased);
 
 	/*
-	* ServerCall
-	* @ see SetRotateOnLocalAxis
-	*/
+	 * ServerCall, Reliable. SetRotateOnLocalAxis is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see SetRotateOnLocalAxis
+	 */
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetRotateOnLocalAxis(bool bRotateLocalAxis);
-	bool ServerSetRotateOnLocalAxis_Validate(bool bRotateLocalAxis) { return true; }
-	void ServerSetRotateOnLocalAxis_Implementation(bool bRotateLocalAxis);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastSetRotateOnLocalAxis(bool bRotateLocalAxis);
-	void MulticastSetRotateOnLocalAxis_Implementation(bool bRotateLocalAxis);
 
 	/*
-	* ServerCall
+	 * Multicast, Reliable. SetRotateOnLocalAxis is performed in the Clients.
+	 * @ see SetRotateOnLocalAxis
+	 */
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSetRotateOnLocalAxis(bool bRotateLocalAxis);
+
+	/*
+	* ServerCall, Unreliable. CloneSelected is performed in the Server.
+	* Currently no Validation takes place. 
+
+	* NOTE: The Objects must be Replicating in order to be reflected in the Clients.
+	* Objects that are cloned are NOT directly handled but rather a Timer is used to check
+	* when the objects have finished beginplay, so that we are sure that the networking logic has been processed for them
+
 	* @ see CloneSelected
+	* @ see CheckUnreplicatedActors
 	*/
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerCloneSelected(bool bSelectNewClones = true
 		, bool bAppendToList = false);
 
-	bool ServerCloneSelected_Validate(bool bSelectNewClones
-		, bool bAppendToList) { return true; }
-
-	void ServerCloneSelected_Implementation(bool bSelectNewClones
-		, bool bAppendToList);
-
+	/*
+	 * A function called by a Timer that checks when a List of Actors have BegunPlay
+	 * and have been replicated. Once all Actors that are on the Unreplicated list have been processed,
+	 * the remaining functions such as MulticastSetSelectedComponents are called.
+	 */
 	void CheckUnreplicatedActors();
 
+	/*
+	 * ServerCall, Unreliable. SetDomain is performed in the Server.
+	 * Currently no Validation takes place.
+	 * @ see SetDomain
+	 */
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetDomain(ETransformationDomain Domain);
-	bool ServerSetDomain_Validate(ETransformationDomain Domain) { return true; }
-	void ServerSetDomain_Implementation(ETransformationDomain Domain);
 
+	/*
+	 * Multicast, Unreliable. SetDomain is performed in the Clients.
+	 * @ see SetDomain
+	 */
 	UFUNCTION(NetMulticast, Unreliable)
 	void MulticastSetDomain(ETransformationDomain Domain);
-	void MulticastSetDomain_Implementation(ETransformationDomain Domain);
 
-
+	/*
+	 * Multicast, Reliable. 
+	 * Syncs the SelectedComponents of the Server to the Clients.
+	 */
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastSetSelectedComponents(const TArray<USceneComponent*>& Components);
-
-	void MulticastSetSelectedComponents_Implementation(
-		const TArray<USceneComponent*>& Components);
 
 	//Networking Variables
 private:
@@ -697,7 +721,7 @@ private:
 	* - For an actor, replicating must be on
 	* - For a component, both its owner and itself need to be replicating
 	*/
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Replicated Runtime Transformer", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Replicated Runtime Transformer", meta = (AllowPrivateAccess = "true"))
 	bool bIgnoreNonReplicatedObjects;
 
 	FTransform	NetworkDeltaTransform;
