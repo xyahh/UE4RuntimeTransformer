@@ -18,6 +18,8 @@
 /* Interface */
 #include "FocusableObject.h"
 
+#define RTT_LOG(x, ...)  UE_LOG(LogRuntimeTransformer, Warning, TEXT(x), __VA_ARGS__)
+
 // Sets default values
 ATransformerPawn::ATransformerPawn()
 {
@@ -120,8 +122,7 @@ void ATransformerPawn::FilterHits(TArray<FHitResult>& outHits)
 				else
 					continue; //actors only consider whether they replicate
 			}
-			UE_LOG(LogRuntimeTransformer, Log
-				, TEXT("Removing (Actor: %s   ComponentHit:  %s) from hits because it is not supported for networking.")
+			RTT_LOG("Removing (Actor: %s   ComponentHit:  %s) from hits because it is not supported for networking."
 				, *checkHits[i].Actor->GetName(), *checkHits[i].Component->GetName());
 			outHits.RemoveAt(i);
 		}
@@ -385,7 +386,7 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 
 			FQuat deltaRotation = DeltaTransform.GetRotation();
 
-			FVector deltaLocation = componentTransform.GetLocation() 
+			FVector deltaLocation = componentTransform.GetLocation()
 				- Gizmo->GetActorLocation();
 
 			//DeltaScale is Unrotated Scale to Get Local Scale since World Scale is not supported
@@ -414,8 +415,7 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 			SetTransform(sc, newTransform);
 		}
 		else
-			UE_LOG(LogRuntimeTransformer, Warning
-				, TEXT("Transform will not affect Component [%s] as it is NOT Moveable!")
+			RTT_LOG("Transform will not affect Component [%s] as it is NOT Moveable!"
 				, *sc->GetName());
 	}
 }
@@ -489,8 +489,8 @@ void ATransformerPawn::SetTransformationType(ETransformationType TransformationT
 	//Don't continue if these are the same.
 	if (CurrentTransformation == TransformationType) return;
 
-	if(TransformationType == ETransformationType::TT_NoTransform)
-		UE_LOG(LogRuntimeTransformer, Log, TEXT("Setting Transformation Type to NONE"));
+	if (TransformationType == ETransformationType::TT_NoTransform)
+		RTT_LOG("Setting Transformation Type to None!");
 
 	CurrentTransformation = TransformationType;
 
@@ -527,8 +527,7 @@ void ATransformerPawn::CloneSelected(bool bSelectNewClones
 	, bool bAppendToList)
 {
 	if (Role < ROLE_Authority)
-		UE_LOG(LogRuntimeTransformer, Warning
-			, TEXT("Cloning in a Non-Authority! Please use the Clone RPCs instead"));
+		RTT_LOG("Cloning in a Non-Authority! Please use the Clone RPCs instead");
 
 	auto ComponentListCopy = SelectedComponents;
 	if (false == bAppendToList)
@@ -589,9 +588,10 @@ TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor
 		FActorSpawnParameters spawnParams;
 
 		spawnParams.Template = templateActor;
-		spawnParams.Instigator = this;
-		spawnParams.Owner = this;
-		
+
+		if (templateActor)
+			templateActor->bNetStartup = false;
+
 		if (AActor* actor = world->SpawnActor(templateActor->GetClass()
 			, &spawnTransform, spawnParams))
 		{
@@ -630,7 +630,7 @@ TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<cl
 			PostCreateBlueprintComponent(clone);
 			clone->OnComponentCreated();
 			clone->SetRelativeTransform(sc->GetRelativeTransform());
-
+			
 			outClones.Add(clone);
 
 			//Add to these two maps for reparenting in next phase
@@ -794,10 +794,6 @@ void ATransformerPawn::DeselectActor(AActor* Actor)
 
 TArray<USceneComponent*> ATransformerPawn::DeselectAll(bool bDestroyDeselected)
 {
-	UE_LOG(LogRuntimeTransformer, Log, TEXT("%s - DeselectingAll. Count: %d")
-		, *this->GetName()
-		, SelectedComponents.Num());
-
 	TArray<USceneComponent*> componentsToDeselect = SelectedComponents;
 	for (auto& i : componentsToDeselect)
 		DeselectComponent(i);
@@ -896,8 +892,6 @@ void ATransformerPawn::SetGizmo()
 				UClass* GizmoClass = GetGizmoClass(CurrentTransformation);
 				if (GizmoClass)
 				{
-					UE_LOG(LogRuntimeTransformer, Log,
-						TEXT("Creating new Gizmo from class [%s]"), *GizmoClass->GetName());
 					Gizmo = Cast<ABaseGizmo>(world->SpawnActor(GizmoClass));
 					Gizmo->OnGizmoStateChange.AddDynamic(this, &ATransformerPawn::OnGizmoStateChanged);
 				}
@@ -1066,15 +1060,10 @@ void ATransformerPawn::ReplicateServerTraceResults(bool bTraceSuccessful, bool b
 
 void ATransformerPawn::LogSelectedComponents()
 {
-	UE_LOG(LogRuntimeTransformer, Warning
-		, TEXT("******************** SELECTED COMPONENTS LOG START ********************"));
 
-	UE_LOG(LogRuntimeTransformer, Warning
-		, TEXT("   * Selected Component Count: %d"), SelectedComponents.Num());
-
-	UE_LOG(LogRuntimeTransformer, Warning
-		, TEXT("   * -------------------------------- "));
-
+	RTT_LOG("******************** SELECTED COMPONENTS LOG START ********************");
+	RTT_LOG("   * Selected Component Count: %d", SelectedComponents.Num());
+	RTT_LOG("   * -------------------------------- ");
 	for (int32 i = 0; i < SelectedComponents.Num(); ++i)
 	{
 		USceneComponent* cmp = SelectedComponents[i];
@@ -1090,12 +1079,10 @@ void ATransformerPawn::LogSelectedComponents()
 		else
 			message += TEXT("[INVALID]");
 
-		UE_LOG(LogRuntimeTransformer, Warning
-			, TEXT("   * [%d] %s"), i, *message);
+		RTT_LOG("   * [%d] %s", i, *message);
 	}
 
-	UE_LOG(LogRuntimeTransformer, Warning
-		, TEXT("******************** SELECTED COMPONENTS LOG END   ********************"));
+	RTT_LOG("******************** SELECTED COMPONENTS LOG END   ********************");
 }
 
 bool ATransformerPawn::ServerTraceByObjectTypes_Validate(
@@ -1335,8 +1322,7 @@ void ATransformerPawn::CheckUnreplicatedActors()
 		//stop calling this if no more unreplicated actors
 		GetWorldTimerManager().ClearTimer(CheckUnrepTimerHandle);
 
-		UE_LOG(LogRuntimeTransformer, Log
-			, TEXT("[SERVER] Time Elapsed for %d Replicated Actors to replicate: %f")
+		RTT_LOG("[SERVER] Time Elapsed for %d Replicated Actors to replicate: %f"
 			, ReplicatedActorClones.Num(), timeElapsed);
 
 
@@ -1375,3 +1361,5 @@ void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
 	if(Components.Num() > 0)
 		SelectMultipleComponents(Components);
 }
+
+#undef RTT_LOG
