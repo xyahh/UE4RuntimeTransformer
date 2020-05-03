@@ -1,0 +1,28 @@
+PLUGIN LIMITATIONS
+
+These are the current things the plugin does not support 
+and the reason(s) for not supporting them.
+
+
+----------------------------------------------
+COMPONENT CLONING IN A MULTIPLAYER ENVIRONMENT
+----------------------------------------------
+
+Calling "ServerCloneSelected" will not yield anything if the base is currently Component and NOT Actor (Actor Cloning is 
+supported). 
+
+One reason might be because I am lazy to circumvent the issue explained below.
+
+Another (good) reason might be because the components themselves need assets and these assets need to also replicate...
+
+Let's put TextRenderComponent as an Example.
+
+If you try to create a TextRenderComponent and replicate it, you will find that yes, the Component does replicate, but its 
+assets (font, text content, etc) will not replicate.
+
+If in the Server I create a replicating Text Render Component that says "I like Pi", then the clients will only see "Text", even if the Component is replicating.
+I think there's no simple solution to this unless I get my hands dirty... which I am not doing because this is a free plugin ;)
+
+One way you can work around this (although I do not recommend it) is to have Cloning take place in every client (a Multicast to all Clients to clone the currently Selected Objects which are replicated). 
+This can work... but the issue with this is that these new components will not share any relation to each other and so transforming them will little by little cause discrepancies.
+You can do this only if you don't need every client to have the same exact thing on their screens.

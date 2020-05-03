@@ -18,7 +18,7 @@
 /* Interface */
 #include "FocusableObject.h"
 
-#define RTT_LOG(x, ...)  UE_LOG(LogRuntimeTransformer, Warning, TEXT(x), __VA_ARGS__)
+#define RTT_LOG(LogType, x, ...)  UE_LOG(LogRuntimeTransformer, LogType, TEXT(x), __VA_ARGS__)
 
 // Sets default values
 ATransformerPawn::ATransformerPawn()
@@ -122,7 +122,7 @@ void ATransformerPawn::FilterHits(TArray<FHitResult>& outHits)
 				else
 					continue; //actors only consider whether they replicate
 			}
-			RTT_LOG("Removing (Actor: %s   ComponentHit:  %s) from hits because it is not supported for networking."
+			RTT_LOG(Warning, "Removing (Actor: %s   ComponentHit:  %s) from hits because it is not supported for networking."
 				, *checkHits[i].Actor->GetName(), *checkHits[i].Component->GetName());
 			outHits.RemoveAt(i);
 		}
@@ -415,8 +415,10 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 			SetTransform(sc, newTransform);
 		}
 		else
-			RTT_LOG("Transform will not affect Component [%s] as it is NOT Moveable!"
-				, *sc->GetName());
+		{
+			RTT_LOG(Warning, "Transform will not affect Component [%s] as it is NOT Moveable!", *sc->GetName());
+		}
+			
 	}
 }
 
@@ -490,7 +492,7 @@ void ATransformerPawn::SetTransformationType(ETransformationType TransformationT
 	if (CurrentTransformation == TransformationType) return;
 
 	if (TransformationType == ETransformationType::TT_NoTransform)
-		RTT_LOG("Setting Transformation Type to None!");
+		RTT_LOG(Warning, "Setting Transformation Type to None!");
 
 	CurrentTransformation = TransformationType;
 
@@ -527,7 +529,7 @@ void ATransformerPawn::CloneSelected(bool bSelectNewClones
 	, bool bAppendToList)
 {
 	if (Role < ROLE_Authority)
-		RTT_LOG("Cloning in a Non-Authority! Please use the Clone RPCs instead");
+		RTT_LOG(Warning, "Cloning in a Non-Authority! Please use the Clone RPCs instead");
 
 	auto ComponentListCopy = SelectedComponents;
 	if (false == bAppendToList)
@@ -618,28 +620,29 @@ TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<cl
 	TMap<USceneComponent*, USceneComponent*> CcOp; //Clone component - Original parent
 
 	//clone components phase
-	for (auto& sc : Components)
+	for (auto& templateComponent : Components)
 	{
-		if (!sc) continue;
-		AActor* owner = sc->GetOwner();
+		if (!templateComponent) continue;
+		AActor* owner = templateComponent->GetOwner();
 		if (!owner) continue;
-		if (USceneComponent* clone = Cast<USceneComponent>(StaticDuplicateObject(sc, owner)))
-		{
 
-			//manually call these events
+		if (USceneComponent* clone = Cast<USceneComponent>(
+			StaticDuplicateObject(templateComponent, owner)))
+		{
 			PostCreateBlueprintComponent(clone);
 			clone->OnComponentCreated();
-			clone->SetRelativeTransform(sc->GetRelativeTransform());
-			
+
+			clone->RegisterComponent();
+			clone->SetRelativeTransform(templateComponent->GetRelativeTransform());
+
 			outClones.Add(clone);
-
 			//Add to these two maps for reparenting in next phase
-			OcCc.Add(sc, clone); //Original component - Clone component
+			OcCc.Add(templateComponent, clone); //Original component - Clone component
 
-			if (sc == owner->GetRootComponent())
+			if (templateComponent == owner->GetRootComponent())
 				CcOp.Add(clone, owner->GetRootComponent()); //this will cause a loop in the maps, so we must check for this!
 			else 
-				CcOp.Add(clone, sc->GetAttachParent()); //Clone component - Original parent
+				CcOp.Add(clone, templateComponent->GetAttachParent()); //Clone component - Original parent
 		}
 	}
 
@@ -688,7 +691,6 @@ TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<cl
 		}
 
 		cp.Key->AttachToComponent(parent, attachmentRule);
-		cp.Key->RegisterComponent();
 
 		//Selecting childs and parents can cause weird issues 
 		// so only select the topmost clones (those that do not have cloned parents!)
@@ -1061,9 +1063,9 @@ void ATransformerPawn::ReplicateServerTraceResults(bool bTraceSuccessful, bool b
 void ATransformerPawn::LogSelectedComponents()
 {
 
-	RTT_LOG("******************** SELECTED COMPONENTS LOG START ********************");
-	RTT_LOG("   * Selected Component Count: %d", SelectedComponents.Num());
-	RTT_LOG("   * -------------------------------- ");
+	RTT_LOG(Log, "******************** SELECTED COMPONENTS LOG START ********************");
+	RTT_LOG(Log, "   * Selected Component Count: %d", SelectedComponents.Num());
+	RTT_LOG(Log, "   * -------------------------------- ");
 	for (int32 i = 0; i < SelectedComponents.Num(); ++i)
 	{
 		USceneComponent* cmp = SelectedComponents[i];
@@ -1079,10 +1081,10 @@ void ATransformerPawn::LogSelectedComponents()
 		else
 			message += TEXT("[INVALID]");
 
-		RTT_LOG("   * [%d] %s", i, *message);
+		RTT_LOG(Log, "   * [%d] %s", i, *message);
 	}
 
-	RTT_LOG("******************** SELECTED COMPONENTS LOG END   ********************");
+	RTT_LOG(Log, "******************** SELECTED COMPONENTS LOG END   ********************");
 }
 
 bool ATransformerPawn::ServerTraceByObjectTypes_Validate(
@@ -1273,6 +1275,13 @@ bool ATransformerPawn::ServerCloneSelected_Validate(bool bSelectNewClones, bool 
 void ATransformerPawn::ServerCloneSelected_Implementation(bool bSelectNewClones
 	, bool bAppendToList)
 {
+	if (bComponentBased)
+	{
+		RTT_LOG(Warning, "** Component Cloning for Networked Environment is currently not supported :( **");
+		// see ServerCloneSelected definition for a reason why Component Cloning is not supported
+		return;
+	}
+
 	auto ComponentListCopy = GetSelectedComponents();
 
 	//Store it to be used in the Timer and don't deselect just yet
@@ -1285,10 +1294,7 @@ void ATransformerPawn::ServerCloneSelected_Implementation(bool bSelectNewClones
 	if (bSelectNewClones)
 	{
 		for (auto& c : cloneList)
-		{
-			if (AActor* a = c->GetOwner())
-				UnreplicatedActorClones.Add(a);
-		}
+			UnreplicatedComponentClones.Add(c);
 
 		//Timer to loop until all Unreplicated Actors have finished replicating!
 		if (UWorld* world = GetWorld())
@@ -1302,34 +1308,34 @@ void ATransformerPawn::ServerCloneSelected_Implementation(bool bSelectNewClones
 
 void ATransformerPawn::CheckUnreplicatedActors()
 {
-	for (auto& i : UnreplicatedActorClones)
+	for (auto& i : UnreplicatedComponentClones)
 	{
 		// rather than calling "IsSupportedForNetworking" (which returns true all the time)
 		// call HasActorBegunPlay (which means we are sure the BeginPlay for AActor has finished completely.
 		// and so we can safely send this reference over the network
-		if (i && i->HasActorBegunPlay())
-			ReplicatedActorClones.Add(i);
+		if (i && i->HasBegunPlay() && i->IsSupportedForNetworking())
+			ReplicatedComponentClones.Add(i);
 	}
 
-	for (auto& i : ReplicatedActorClones)
-		UnreplicatedActorClones.Remove(i);
+	for (auto& i : ReplicatedComponentClones)
+		UnreplicatedComponentClones.Remove(i);
 	
 	float timeElapsed = GetWorldTimerManager().GetTimerElapsed(CheckUnrepTimerHandle);
 
 	//check if all UnreplicatedActorCloens have been replicated
-	if (UnreplicatedActorClones.Num() == 0)
+	if (UnreplicatedComponentClones.Num() == 0)
 	{
 		//stop calling this if no more unreplicated actors
 		GetWorldTimerManager().ClearTimer(CheckUnrepTimerHandle);
 
-		RTT_LOG("[SERVER] Time Elapsed for %d Replicated Actors to replicate: %f"
-			, ReplicatedActorClones.Num(), timeElapsed);
+		RTT_LOG(Log, "[SERVER] Time Elapsed for %d Replicated Actors to replicate: %f"
+			, ReplicatedComponentClones.Num(), timeElapsed);
 
 
-		SelectMultipleActors(ReplicatedActorClones, bAppendClonesToList);
+		SelectMultipleComponents(ReplicatedComponentClones, bAppendClonesToList);
 
 		//Clear the Replicated Actors once we have selected them
-		ReplicatedActorClones.Empty();
+		ReplicatedComponentClones.Empty();
 
 		//send all the newly selected replicated actors!
 		MulticastSetSelectedComponents(SelectedComponents);
@@ -1357,9 +1363,17 @@ void ATransformerPawn::MulticastSetDomain_Implementation(ETransformationDomain D
 void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
 	const TArray<USceneComponent*>& Components)
 {
-	DeselectAll();
-	if(Components.Num() > 0)
+	if (Role < ROLE_Authority)
+		RTT_LOG(Log, "MulticastSelect ComponentCount: %d", Components.Num());
+
+	if (Components.Num() > 0)
+	{
+		DeselectAll();
 		SelectMultipleComponents(Components);
+	}
+
+	if (Role < ROLE_Authority)
+		RTT_LOG(Log, "Selected ComponentCount: %d", SelectedComponents.Num());
 }
 
 #undef RTT_LOG

@@ -671,6 +671,8 @@ public:
 	* ServerCall, Unreliable. CloneSelected is performed in the Server.
 	* Currently no Validation takes place. 
 
+	* WARNING: Component Cloning will NOT take place. (PluginLimitations.txt for details)
+
 	* NOTE: The Objects must be Replicating in order to be reflected in the Clients.
 	* Objects that are cloned are NOT directly handled but rather a Timer is used to check
 	* when the objects have finished beginplay, so that we are sure that the networking logic has been processed for them
@@ -681,7 +683,7 @@ public:
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerCloneSelected(bool bSelectNewClones = true
 		, bool bAppendToList = false);
-
+	
 	/*
 	 * A function called by a Timer that checks when a List of Actors have BegunPlay
 	 * and have been replicated. Once all Actors that are on the Unreplicated list have been processed,
@@ -726,11 +728,11 @@ private:
 
 	FTransform	NetworkDeltaTransform;
 
-	//List of clone actors that need replication but haven't been replicated yet
-	TArray<AActor*> UnreplicatedActorClones;
+	//List of clone actor/components that need replication but haven't been replicated yet
+	TArray<class USceneComponent*> UnreplicatedComponentClones;
 
 	//List of clone actors that replicated (handled once unreplicated actor clones is empty)
-	TArray<AActor*> ReplicatedActorClones;
+	TArray<class USceneComponent*> ReplicatedComponentClones;
 
 	FTimerHandle	CheckUnrepTimerHandle;
 
