@@ -34,6 +34,10 @@ ATransformerPawn::ATransformerPawn()
 	RotationGizmoClass		= ARotationGizmo::StaticClass();
 	ScaleGizmoClass			= AScaleGizmo::StaticClass();
 
+	CloneReplicationCheckFrequency = 0.05f;
+	MinimumCloneReplicationTime = 0.01f;
+
+	bResyncSelection = false;
 	bReplicates = false;
 	bIgnoreNonReplicatedObjects = false;
 
@@ -48,7 +52,6 @@ ATransformerPawn::ATransformerPawn()
 	bForceMobility = false;
 	bToggleSelectedInMultiSelection = true;
 	bComponentBased = false;
-	bAppendClonesToList = false;
 }
 
 void ATransformerPawn::GetLifetimeReplicatedProps(
@@ -195,12 +198,16 @@ bool ATransformerPawn::MouseTraceByObjectTypes(float TraceDistance
 	, TArray<AActor*> IgnoredActors, bool bAppendToList)
 {
 	FVector start, end;
+	bool bTraceSuccessful = false;
 	if (GetMouseStartEndPoints(TraceDistance, start, end))
 	{
-		return TraceByObjectTypes(start, end, CollisionChannels
+		bTraceSuccessful = TraceByObjectTypes(start, end, CollisionChannels
 			, IgnoredActors, bAppendToList);
+
+		if (!bTraceSuccessful && !bAppendToList)
+			ServerDeselectAll(false);
 	}
-	return false;
+	return bTraceSuccessful;
 }
 
 bool ATransformerPawn::MouseTraceByChannel(float TraceDistance
@@ -208,10 +215,13 @@ bool ATransformerPawn::MouseTraceByChannel(float TraceDistance
 	, bool bAppendToList)
 {
 	FVector start, end;
+	bool bTraceSuccessful = false;
 	if (GetMouseStartEndPoints(TraceDistance, start, end))
 	{
-		return TraceByChannel(start, end, TraceChannel
+		bTraceSuccessful = TraceByChannel(start, end, TraceChannel
 			, IgnoredActors, bAppendToList);
+		if (!bTraceSuccessful && !bAppendToList)
+			ServerDeselectAll(false);
 	}
 	return false;
 }
@@ -222,12 +232,17 @@ bool ATransformerPawn::MouseTraceByProfile(float TraceDistance
 	, bool bAppendToList)
 {
 	FVector start, end;
+	bool bTraceSuccessful = false;
 	if (GetMouseStartEndPoints(TraceDistance, start, end))
 	{
-		return TraceByProfile(start, end, ProfileName
+
+		bTraceSuccessful = TraceByProfile(start, end, ProfileName
 			, IgnoredActors, bAppendToList);
+		if (!bTraceSuccessful && !bAppendToList)
+			ServerDeselectAll(false);
+
 	}
-	return false;
+	return bTraceSuccessful;
 }
 
 bool ATransformerPawn::TraceByObjectTypes(const FVector& StartLocation
@@ -376,6 +391,8 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 {
 	bool* snappingEnabled = SnappingEnabled.Find(CurrentTransformation);
 	float* snappingValue = SnappingValues.Find(CurrentTransformation);
+
+	
 
 	for (auto& sc : SelectedComponents)
 	{
@@ -531,26 +548,25 @@ void ATransformerPawn::CloneSelected(bool bSelectNewClones
 	if (Role < ROLE_Authority)
 		RTT_LOG(Warning, "Cloning in a Non-Authority! Please use the Clone RPCs instead");
 
-	auto ComponentListCopy = SelectedComponents;
-	if (false == bAppendToList)
-		DeselectAll();
-	CloneFromList(ComponentListCopy, bSelectNewClones);
+	auto CloneComponents = CloneFromList(SelectedComponents);
+
+	if (bSelectNewClones)
+		SelectMultipleComponents(CloneComponents, bAppendToList);
 }
 
-TArray<class USceneComponent*> ATransformerPawn::CloneFromList(const TArray<USceneComponent*>& ComponentList
-	, bool bSelectNewClones)
+TArray<class USceneComponent*> ATransformerPawn::CloneFromList(const TArray<USceneComponent*>& ComponentList)
 {
 
 	TArray<class USceneComponent*> outClones;
-
 	if (bComponentBased)
 	{
 		TArray<USceneComponent*> Components;
+		
 		for (auto& i : ComponentList)
 		{
 			if (i) Components.Add(i);
 		}
-		outClones = CloneComponents(Components, bSelectNewClones);
+		outClones = CloneComponents(Components);
 	}
 	else
 	{
@@ -560,7 +576,7 @@ TArray<class USceneComponent*> ATransformerPawn::CloneFromList(const TArray<USce
 			if (i)
 				Actors.Add(i->GetOwner());
 		}
-		outClones = CloneActors(Actors, bSelectNewClones);
+		outClones = CloneActors(Actors);
 	}
 
 	if (CurrentDomain != ETransformationDomain::TD_None && Gizmo.IsValid())
@@ -569,8 +585,7 @@ TArray<class USceneComponent*> ATransformerPawn::CloneFromList(const TArray<USce
 	return outClones;
 }
 
-TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor*>& Actors
-	, bool bSelectNewClones)
+TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor*>& Actors)
 {
 	TArray<class USceneComponent*> outClones;
 
@@ -590,7 +605,6 @@ TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor
 		FActorSpawnParameters spawnParams;
 
 		spawnParams.Template = templateActor;
-
 		if (templateActor)
 			templateActor->bNetStartup = false;
 
@@ -598,18 +612,12 @@ TArray<class USceneComponent*> ATransformerPawn::CloneActors(const TArray<AActor
 			, &spawnTransform, spawnParams))
 		{
 			outClones.Add(actor->GetRootComponent());
-			if (bSelectNewClones)
-				actorsToSelect.Add(actor);
 		}
 	}
-
-	if (bSelectNewClones)
-		SelectMultipleActors(actorsToSelect);
 	return outClones;
 }
 
-TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<class USceneComponent*>& Components
-	, bool bSelectNewClones)
+TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<class USceneComponent*>& Components)
 {
 	TArray<class USceneComponent*> outClones;
 
@@ -695,15 +703,11 @@ TArray<class USceneComponent*> ATransformerPawn::CloneComponents(const TArray<cl
 		//Selecting childs and parents can cause weird issues 
 		// so only select the topmost clones (those that do not have cloned parents!)
 		//only select those that have an "original parent". 
-		if (bSelectNewClones && (parent == cp.Value 
-			|| parent == actorOwner->GetRootComponent())) 
-			//check if the parent of the cloned is original (means it's topmost)
-			componentsToSelect.Add(cp.Key);
+		//if ((parent == cp.Value 
+		//	|| parent == actorOwner->GetRootComponent())) 
+		//	//check if the parent of the cloned is original (means it's topmost)
+		//	outParents.Add(cp.Key);
 	}
-
-	if(bSelectNewClones)
-		SelectMultipleComponents(componentsToSelect, false);
-	
 
 	return outClones;
 }
@@ -1046,9 +1050,12 @@ void ATransformerPawn::ReplicatedMouseTraceByProfile(float TraceDistance
 TArray<AActor*> ATransformerPawn::GetIgnoredActorsForServerTrace() const
 {
 	TArray<AActor*> ignoredActors;
-	//Ignore Gizmo in Server Trace Test (since Gizmo is relative)
-	if (Gizmo.IsValid())
-		ignoredActors.Add(Gizmo.Get());
+	//Ignore Gizmo in Server Trace Test if it's not Server controlling Pawn (since Gizmo is relative)
+	if (!IsLocallyControlled())
+	{
+		if (Gizmo.IsValid())
+			ignoredActors.Add(Gizmo.Get());
+	}
 	return ignoredActors;
 }
 
@@ -1277,73 +1284,65 @@ void ATransformerPawn::ServerCloneSelected_Implementation(bool bSelectNewClones
 {
 	if (bComponentBased)
 	{
-		RTT_LOG(Warning, "** Component Cloning for Networked Environment is currently not supported :( **");
-		// see ServerCloneSelected definition for a reason why Component Cloning is not supported
+		RTT_LOG(Warning, "** Component Cloning is currently not supported in a Network Environment :( **");
+		// see PluginLimitations.txt for a reason why Component Cloning is not supported
 		return;
 	}
 
 	auto ComponentListCopy = GetSelectedComponents();
 
-	//Store it to be used in the Timer and don't deselect just yet
-	bAppendClonesToList = bAppendToList;
-
 	//just create 'em, not select 'em (we select 'em later)
-	auto cloneList = CloneFromList(ComponentListCopy, false);
+	auto CloneList = CloneFromList(ComponentListCopy);
 
 	//if we have to select the new clones, multicast for these new objects
 	if (bSelectNewClones)
 	{
-		for (auto& c : cloneList)
-			UnreplicatedComponentClones.Add(c);
+		SelectMultipleComponents(CloneList, bAppendToList);
+		UnreplicatedComponentClones = CloneList;
 
 		//Timer to loop until all Unreplicated Actors have finished replicating!
 		if (UWorld* world = GetWorld())
 		{
 			if (!CheckUnrepTimerHandle.IsValid())
 				world->GetTimerManager().SetTimer(CheckUnrepTimerHandle, this
-					, &ATransformerPawn::CheckUnreplicatedActors, 0.01f, true, 0.0f);
+					, &ATransformerPawn::CheckUnreplicatedActors
+					, CloneReplicationCheckFrequency, true, 0.0f);
 		}
 	}
 }
 
 void ATransformerPawn::CheckUnreplicatedActors()
 {
-	for (auto& i : UnreplicatedComponentClones)
+
+	int32 RemoveCount = 0;
+	float timeElapsed = GetWorldTimerManager().GetTimerElapsed(CheckUnrepTimerHandle);
+	for (auto& c : UnreplicatedComponentClones)
 	{
 		// rather than calling "IsSupportedForNetworking" (which returns true all the time)
 		// call HasActorBegunPlay (which means we are sure the BeginPlay for AActor has finished completely.
-		// and so we can safely send this reference over the network
-		if (i && i->HasBegunPlay() && i->IsSupportedForNetworking())
-			ReplicatedComponentClones.Add(i);
+		// and so we can safely send this reference over the network.
+		if (c && c->HasBegunPlay() && c->IsSupportedForNetworking() &&
+			timeElapsed > MinimumCloneReplicationTime) // Make sure there's a minimum time...
+			++RemoveCount;
 	}
 
-	for (auto& i : ReplicatedComponentClones)
-		UnreplicatedComponentClones.Remove(i);
-	
-	float timeElapsed = GetWorldTimerManager().GetTimerElapsed(CheckUnrepTimerHandle);
+	// Remove with performance (Swapping). We don't care about the order in this case
+	// since the role of this is to check that all unreplicated components have been replicated.
+	UnreplicatedComponentClones.RemoveAtSwap(0, RemoveCount);
 
-	//check if all UnreplicatedActorCloens have been replicated
+	// check if all clones have been replicated
 	if (UnreplicatedComponentClones.Num() == 0)
 	{
 		//stop calling this if no more unreplicated actors
 		GetWorldTimerManager().ClearTimer(CheckUnrepTimerHandle);
 
 		RTT_LOG(Log, "[SERVER] Time Elapsed for %d Replicated Actors to replicate: %f"
-			, ReplicatedComponentClones.Num(), timeElapsed);
+			, SelectedComponents.Num(), timeElapsed);
 
-
-		SelectMultipleComponents(ReplicatedComponentClones, bAppendClonesToList);
-
-		//Clear the Replicated Actors once we have selected them
-		ReplicatedComponentClones.Empty();
-
-		//send all the newly selected replicated actors!
+		//send all the selected replicated actors!
 		MulticastSetSelectedComponents(SelectedComponents);
 
 	}
-		
-
-		
 }
 
 bool ATransformerPawn::ServerSetDomain_Validate(ETransformationDomain Domain)
@@ -1360,20 +1359,58 @@ void ATransformerPawn::MulticastSetDomain_Implementation(ETransformationDomain D
 	SetDomain(Domain);
 }
 
+bool ATransformerPawn::ServerSyncSelectedComponents_Validate()
+{
+	return true;
+}
+void ATransformerPawn::ServerSyncSelectedComponents_Implementation()
+{
+	MulticastSetSelectedComponents(SelectedComponents);
+}
+
 void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
 	const TArray<USceneComponent*>& Components)
 {
 	if (Role < ROLE_Authority)
 		RTT_LOG(Log, "MulticastSelect ComponentCount: %d", Components.Num());
 
-	if (Components.Num() > 0)
+	DeselectAll(); //calling here because Selecting MultipleComponents empty is not going to call Deselect all
+	SelectMultipleComponents(Components, true);
+
+	//Tells whether we have Selected the exact number of components that came in 
+	// or there was a nullptr in Components and therefore there is a difference.
+	// if there is a difference we will need to resync
+	bResyncSelection = (Components.Num() != SelectedComponents.Num());
+	if (bResyncSelection)
 	{
-		DeselectAll();
-		SelectMultipleComponents(Components);
+		//Timer to loop until all Unreplicated Actors have finished replicating!
+		if (UWorld* world = GetWorld())
+		{
+			if (!ResyncSelectionTimerHandle.IsValid())
+				world->GetTimerManager().SetTimer(ResyncSelectionTimerHandle, this
+					, &ATransformerPawn::ResyncSelection
+					, 0.1f, true, 0.0f);
+		}
 	}
+	
 
 	if (Role < ROLE_Authority)
 		RTT_LOG(Log, "Selected ComponentCount: %d", SelectedComponents.Num());
+}
+
+void ATransformerPawn::ResyncSelection()
+{
+	if (bResyncSelection)
+	{
+		RTT_LOG(Warning, "Resyncing Selection");
+		ServerSyncSelectedComponents();
+	}
+	else
+	{
+		RTT_LOG(Warning, "Resyncing FINISHED");
+		//stop calling this if no more resync is needed
+		GetWorldTimerManager().ClearTimer(ResyncSelectionTimerHandle);
+	}
 }
 
 #undef RTT_LOG

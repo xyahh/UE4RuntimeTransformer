@@ -152,6 +152,8 @@ public:
 	 * this test will prioritize finding a Gizmo, even if it is behind an object.
 	 * If there is not a Gizmo present, the first Object encountered will be automatically Selected.
 
+	 * Note: This function does not Deselect the Objects selected if Trace doesn't select anything in any situation
+
 	 * @param StartLocation - the starting Location of the trace, in World Space
 	 * @param EndLocation - the ending location of the trace, in World Space
 	 * @param CollisionChannels - All the Channels to be considering during Trace
@@ -170,6 +172,8 @@ public:
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
 	 * this test will prioritize finding a Gizmo, even if it is behind an object.
 	 * If there is not a Gizmo present, the first Object encountered will be automatically Selected.
+
+	  * Note: This function does not Deselect the Objects selected if Trace doesn't select anything in any situation
 
 	 * @param StartLocation - the starting Location of the trace, in World Space
 	 * @param EndLocation - the ending location of the trace, in World Space
@@ -190,6 +194,8 @@ public:
 	 * If a Gizmo is Present, (i.e. there is a Selected Object), then
 	 * this test will prioritize finding a Gizmo, even if it is behind an object.
 	 * If there is not a Gizmo present, the first Object encountered will be automatically Selected.
+
+	  * Note: This function does not Deselect the Objects selected if Trace doesn't select anything in any situation
 
 	 * @param StartLocation - the starting Location of the trace, in World Space
 	 * @param EndLocation - the ending location of the trace, in World Space
@@ -350,18 +356,15 @@ public:
 protected:
 
 	TArray<class USceneComponent*> CloneFromList(
-		const TArray<class USceneComponent*>& ComponentList
-		, bool bSelectNewClones);
+		const TArray<class USceneComponent*>& ComponentList);
 
 private:
 
 	TArray<class USceneComponent*> CloneActors(
-		const TArray<AActor*>& Actors
-		, bool bSelectNewClones);
+		const TArray<AActor*>& Actors);
 
 	TArray<class USceneComponent*> CloneComponents(
-		const TArray<class USceneComponent*>& Components
-		, bool bSelectNewClones);
+		const TArray<class USceneComponent*>& Components);
 
 public:
 
@@ -707,11 +710,21 @@ public:
 	void MulticastSetDomain(ETransformationDomain Domain);
 
 	/*
+	 * ServerCall, Reliable. Multicasts the Selected Components of the Server to all Clients.
+	 * Currently no Validation takes place.
+	 */
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	void ServerSyncSelectedComponents();
+
+	/*
 	 * Multicast, Reliable. 
 	 * Syncs the SelectedComponents of the Server to the Clients.
 	 */
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastSetSelectedComponents(const TArray<USceneComponent*>& Components);
+
+	//Tries to resync the Selections 
+	void ResyncSelection();
 
 	//Networking Variables
 private:
@@ -726,15 +739,28 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Replicated Runtime Transformer", meta = (AllowPrivateAccess = "true"))
 	bool bIgnoreNonReplicatedObjects;
 
+	/*
+	 * Optional minimum time to wait for all Cloned objects to fully replicate and are selectable.
+	 * It is not required, but there are occassions (especially when cloning multiple objects at once)
+	 * where the newly spawned clone objects are not selected on the client side because the object, 
+	 * although has begun play, is not still fully network addressable on the client side and so a nullptr is passed 
+	 * (so no selection occurs).
+	 * The time it actually takes to Replicate can be more because it also waits for all clone objects to have begun play.
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Replicated Runtime Transformer", meta = (AllowPrivateAccess = "true"))
+	float MinimumCloneReplicationTime;
+
+	//The frequency at which checks are done on newly spawned clones. Whether they are suitable for replication.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Replicated Runtime Transformer", meta = (AllowPrivateAccess = "true"))
+	float CloneReplicationCheckFrequency;
+
 	FTransform	NetworkDeltaTransform;
 
 	//List of clone actor/components that need replication but haven't been replicated yet
 	TArray<class USceneComponent*> UnreplicatedComponentClones;
 
-	//List of clone actors that replicated (handled once unreplicated actor clones is empty)
-	TArray<class USceneComponent*> ReplicatedComponentClones;
-
 	FTimerHandle	CheckUnrepTimerHandle;
+	FTimerHandle	ResyncSelectionTimerHandle;
 
 
 	//Other Vars
@@ -809,7 +835,6 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	TMap<ETransformationType, bool> SnappingEnabled;
 
-
 	/**
 	* Whether to Force Mobility on items that are not Moveable
 	* if true, Mobility on Components will be changed to Moveable (WARNING: does not set it back to its original mobility!)
@@ -848,7 +873,6 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime Transformations", meta = (AllowPrivateAccess = "true"))
 	bool bComponentBased;
 
-	//Property that is used to Store the value of bAppendToList when Cloning for Networking (since it's not an Immediate procedure)
-	//Only relevant in the Server
-	bool bAppendClonesToList;
+	//Whether we need to Sync with Server if there is a mismatch in number of Selections.
+	bool bResyncSelection;
 };
