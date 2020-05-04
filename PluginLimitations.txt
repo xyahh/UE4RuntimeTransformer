@@ -11,9 +11,7 @@ COMPONENT CLONING IN A MULTIPLAYER ENVIRONMENT
 Calling "ServerCloneSelected" will not yield anything if the base is currently Component and NOT Actor (Actor Cloning is 
 supported). 
 
-One reason might be because I am lazy to circumvent the issue explained below.
-
-Another (good) reason might be because the components themselves need assets and these assets need to also replicate...
+The reason is because the components themselves need assets and these assets need to also replicate...
 
 Let's put TextRenderComponent as an Example.
 
