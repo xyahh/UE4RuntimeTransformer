@@ -48,7 +48,7 @@ Contact: juan@xyah.games
 - When Rotating and Scaling, the Gizmos shake just a little bit. This can go unnoticed but
 still an issue that needs fixing.
 - For now, the Binaries are only compiled for Windows only. Those that wish to distribute to Linux or Mac should have to compile the plugin in those machines as well.
-- Component cloning is not Network Replicated. This is due to the fact that the Assets bound to these Objects are not replicated so, although the Component might be replicated (e.g. a TextRender Component), the content will be the default content in the Client, and not the content set in the Server (e.g. for TextRenderComponent, text content, font settings, etc will not be replicated). 
+- Component cloning is not Network Replicated. This is due to the fact that the Assets bound to these Objects are not replicated so, although the Component might be replicated (e.g. a TextRender Component), the content will be the default content in the Client, and not the content set in the Server (e.g. for TextRenderComponent, text content, font settings, etc will not be replicated). See "PluginLimitations.txt" for more info
 
 # Next Steps
 - Fix known issues
