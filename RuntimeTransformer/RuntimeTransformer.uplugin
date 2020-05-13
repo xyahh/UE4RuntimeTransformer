@@ -22,5 +22,5 @@
 		}
 	],
 	"WhitelistPlatforms": [ "Win64", "Win32"],
-	"EngineVersion" : "4.17.0"
+	"EngineVersion" : "4.24.0"
 }
