@@ -392,7 +392,7 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 	bool* snappingEnabled = SnappingEnabled.Find(CurrentTransformation);
 	float* snappingValue = SnappingValues.Find(CurrentTransformation);
 
-	
+	UClass* a;
 
 	for (auto& sc : SelectedComponents)
 	{
