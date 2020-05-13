@@ -3,7 +3,7 @@ A Runtime Gizmo Transformer tool helps you translate/rotate/scale objects in run
 
 Showcase Video: https://www.youtube.com/watch?v=0zys_jv5zyk
 
-This is a UE4 Plugin made using C++ and Blueprints in Unreal Engine 4.22. (Verified to be Upgradeable to 4.24)
+This is a UE4 Plugin made using C++ and Blueprints in Unreal Engine 4.24 (Check previous commits for 4.22 version Content assets)
 
 Is Network Replicated? YES!
 
