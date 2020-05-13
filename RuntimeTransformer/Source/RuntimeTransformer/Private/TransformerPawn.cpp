@@ -392,8 +392,6 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 	bool* snappingEnabled = SnappingEnabled.Find(CurrentTransformation);
 	float* snappingValue = SnappingValues.Find(CurrentTransformation);
 
-	UClass* a;
-
 	for (auto& sc : SelectedComponents)
 	{
 		if (!sc) continue;
@@ -545,7 +543,7 @@ TArray<USceneComponent*> ATransformerPawn::GetSelectedComponents() const
 void ATransformerPawn::CloneSelected(bool bSelectNewClones
 	, bool bAppendToList)
 {
-	if (Role < ROLE_Authority)
+	if (GetLocalRole() < ROLE_Authority)
 		RTT_LOG(Warning, "Cloning in a Non-Authority! Please use the Clone RPCs instead");
 
 	auto CloneComponents = CloneFromList(SelectedComponents);
@@ -964,7 +962,7 @@ void ATransformerPawn::ReplicatedMouseTraceByObjectTypes(float TraceDistance
 			, TArray<AActor*>(), bAppendToList);
 
 		//Server
-		if (Role == ROLE_Authority)
+		if (GetLocalRole() == ROLE_Authority)
 			ReplicateServerTraceResults(bTraceSuccessful, bAppendToList);
 		//Client
 		else
@@ -996,7 +994,7 @@ void ATransformerPawn::ReplicatedMouseTraceByChannel(float TraceDistance
 			, TArray<AActor*>(), bAppendToList);
 
 		//Server
-		if (Role == ROLE_Authority)
+		if (GetLocalRole() == ROLE_Authority)
 			ReplicateServerTraceResults(bTraceSuccessful, bAppendToList);
 		//Client
 		else
@@ -1026,7 +1024,7 @@ void ATransformerPawn::ReplicatedMouseTraceByProfile(float TraceDistance
 			, TArray<AActor*>(), bAppendToList);
 
 		//Server
-		if (Role == ROLE_Authority)
+		if (GetLocalRole() == ROLE_Authority)
 			ReplicateServerTraceResults(bTraceSuccessful, bAppendToList);
 		//Client
 		else
@@ -1371,7 +1369,7 @@ void ATransformerPawn::ServerSyncSelectedComponents_Implementation()
 void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
 	const TArray<USceneComponent*>& Components)
 {
-	if (Role < ROLE_Authority)
+	if (GetLocalRole() < ROLE_Authority)
 		RTT_LOG(Log, "MulticastSelect ComponentCount: %d", Components.Num());
 
 	DeselectAll(); //calling here because Selecting MultipleComponents empty is not going to call Deselect all
@@ -1394,7 +1392,7 @@ void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
 	}
 	
 
-	if (Role < ROLE_Authority)
+	if (GetLocalRole() < ROLE_Authority)
 		RTT_LOG(Log, "Selected ComponentCount: %d", SelectedComponents.Num());
 }
 
