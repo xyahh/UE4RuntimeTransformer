@@ -20,5 +20,7 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		}
-	]
+	],
+	"WhitelistPlatforms": [ "Win64", "Win32"],
+	"EngineVersion" : "4.17.0"
 }
