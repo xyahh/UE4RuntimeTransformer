@@ -8,19 +8,20 @@
 	"CreatedBy": "Juan Marcelo Portillo",
 	"CreatedByURL": "",
 	"DocsURL": "",
-	"MarketplaceURL": "",
+	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/289c74dbc9614a77b67cf0c414ca43e0",
 	"SupportURL": "",
+	"EngineVersion": "4.24.0",
 	"CanContainContent": true,
-	"IsBetaVersion": false,
-	"IsExperimentalVersion": false,
-	"Installed": false,
+	"Installed": true,
 	"Modules": [
 		{
 			"Name": "RuntimeTransformer",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Win32"
+			]
 		}
-	],
-	"WhitelistPlatforms": [ "Win64", "Win32"],
-	"EngineVersion" : "4.24.0"
+	]
 }
