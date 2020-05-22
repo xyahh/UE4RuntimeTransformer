@@ -37,7 +37,7 @@ public:
 	*/
 	void ScaleGizmoScene(const FVector& ReferenceLocation, const FVector& ReferenceLookDirection, float FieldOfView = 90.f);
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Gizmo")
 	ETransformationDomain GetTransformationDomain(class USceneComponent* ComponentHit) const;
 
 	// Returns a Snapped Transform based on how much has been accumulated, the Delta Transform and Snapping Value
@@ -71,17 +71,17 @@ protected:
 	/**
 	 * Adds or modifies an entry to the DomainMap.
 	*/
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Gizmo")
 	void RegisterDomainComponent(class USceneComponent* Component
 		, ETransformationDomain Domain);
 
 public:
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Gizmo")
 	void SetTransformProgressState(bool bInProgress
 		, ETransformationDomain CurrentDomain);
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Gizmo")
 	bool GetTransformProgressState() const { return bTransformInProgress; }
 
 	/**
@@ -89,30 +89,30 @@ public:
 	 * in progress = true to false (and viceversa)
 	 * Can be used to Change the meshes and visuals of Gizmo while Transform is in Progress
 	 */
-	UPROPERTY(BlueprintAssignable)
+	UPROPERTY(BlueprintAssignable, Category = "Gizmo")
 	FGizmoStateChangedDelegate OnGizmoStateChange;
 
 protected:
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class USceneComponent* RootScene;
 
 	/* Scene Component that will go Under the Root Scene
 	 * This is so that we can Scale all the things under it without Scaling the Actor itself (i.e. root component)
 	*/
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class USceneComponent* ScalingScene;
 
 	// The Hit Box for the X-Axis Direction Transform
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* X_AxisBox;
 
 	// The Hit Box for the X-Axis Direction Transform
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* Y_AxisBox;
 
 	// The Hit Box for the X-Axis Direction Transform
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* Z_AxisBox;
 
 	// Used to calculate the distance the rays have travelled

@@ -566,7 +566,7 @@ public:
 	 * Multicast, Reliable. ClearDomain is performed in the Clients.
 	 * @ see ClearDomain
 	 */
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastClearDomain();
 
 	/*
@@ -581,7 +581,7 @@ public:
 	 * Multicast, Reliable. ApplyTransform is performed in the Clients.
 	 * @ see ApplyTransform
 	 */
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastApplyTransform(const FTransform& DeltaTransform);
 
 	/*
@@ -606,7 +606,7 @@ public:
 	 * Multicast, Unreliable. DeselectAll is performed in the Clients.
 	 * @ see DeselectAll
 	 */
-	UFUNCTION(NetMulticast, Unreliable)
+	UFUNCTION(NetMulticast, Unreliable, Category = "Replicated Runtime Transformer")
 	void MulticastDeselectAll(bool bDestroySelected);
 
 
@@ -622,7 +622,7 @@ public:
 	 * Multicast, Reliable. SetSpaceType is performed in the Clients.
 	 * @ see SetSpaceType
 	 */
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastSetSpaceType(ESpaceType Space);
 
 	/*
@@ -637,7 +637,7 @@ public:
 	 * Multicast, Reliable. SetTransformationType is performed in the Clients.
 	 * @ see SetTransformationType
 	 */
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastSetTransformationType(ETransformationType Transformation);
 
 	/*
@@ -652,7 +652,7 @@ public:
 	 * Multicast, Reliable. SetComponentBased is performed in the Clients.
 	 * @ see SetComponentBased
 	 */
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastSetComponentBased(bool bIsComponentBased);
 
 	/*
@@ -667,7 +667,7 @@ public:
 	 * Multicast, Reliable. SetRotateOnLocalAxis is performed in the Clients.
 	 * @ see SetRotateOnLocalAxis
 	 */
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastSetRotateOnLocalAxis(bool bRotateLocalAxis);
 
 	/*
@@ -706,7 +706,7 @@ public:
 	 * Multicast, Unreliable. SetDomain is performed in the Clients.
 	 * @ see SetDomain
 	 */
-	UFUNCTION(NetMulticast, Unreliable)
+	UFUNCTION(NetMulticast, Unreliable, Category = "Replicated Runtime Transformer")
 	void MulticastSetDomain(ETransformationDomain Domain);
 
 	/*
@@ -720,7 +720,7 @@ public:
 	 * Multicast, Reliable. 
 	 * Syncs the SelectedComponents of the Server to the Clients.
 	 */
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastSetSelectedComponents(const TArray<USceneComponent*>& Components);
 
 	//Tries to resync the Selections 
