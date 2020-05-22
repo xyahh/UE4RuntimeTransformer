@@ -33,19 +33,19 @@ public:
 protected:
 
 	// The Hit Box for the XY-Plane Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* XY_PlaneBox;
 
 	// The Hit Box for the YZ-Plane Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* YZ_PlaneBox;
 
 	// The Hit Box for the	XZ-Plane Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* XZ_PlaneBox;
 
 	// The Hit Box for the	XYZ Free Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class USphereComponent* XYZ_Sphere;
 };
 

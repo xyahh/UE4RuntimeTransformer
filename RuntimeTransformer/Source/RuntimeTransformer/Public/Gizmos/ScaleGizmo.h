@@ -41,22 +41,22 @@ public:
 protected:
 
 	//To see how much an Unreal Unit affects Scaling (e.g. how powerful the mouse scales the object!)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gizmo")
 	float ScalingFactor;
 
 	// The Hit Box for the XY-Plane Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* XY_PlaneBox;
 
 	// The Hit Box for the YZ-Plane Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* YZ_PlaneBox;
 
 	// The Hit Box for the	XZ-Plane Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class UBoxComponent* XZ_PlaneBox;
 
 	// The Hit Box for the	XYZ Free Translation
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gizmo")
 	class USphereComponent* XYZ_Sphere;
 };
