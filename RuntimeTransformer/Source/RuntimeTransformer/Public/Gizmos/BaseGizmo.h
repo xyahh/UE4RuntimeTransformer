@@ -18,6 +18,8 @@ public:
 	// Sets default values for this actor's properties
 	ABaseGizmo();
 
+	virtual void Tick(float DeltaSeconds) override;
+
 	virtual ETransformationType GetGizmoType() const { return ETransformationType::TT_NoTransform; }
 
 	virtual void UpdateGizmoSpace(ESpaceType SpaceType);

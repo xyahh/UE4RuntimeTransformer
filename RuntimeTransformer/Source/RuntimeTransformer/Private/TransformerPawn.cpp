@@ -921,12 +921,6 @@ void ATransformerPawn::UpdateGizmoPlacement()
 	//means that there are no active gizmos (no selections) so nothing to do in this func
 	if (!Gizmo.IsValid()) return;
 
-	FDetachmentTransformRules detachmentRules(EDetachmentRule::KeepWorld, false);
-
-	// detach from any actors it may be currently attached to
-	Gizmo->DetachFromActor(detachmentRules);
-	Gizmo->SetActorTransform(FTransform()); //Reset Transformation
-
 	USceneComponent* ComponentToAttachTo = nullptr;
 
 	switch (GizmoPlacement)
@@ -939,9 +933,12 @@ void ATransformerPawn::UpdateGizmoPlacement()
 
 	if (ComponentToAttachTo)
 	{
-		FAttachmentTransformRules attachmentRules 
-			= FAttachmentTransformRules::SnapToTargetIncludingScale;
-		Gizmo->AttachToComponent(ComponentToAttachTo, attachmentRules);
+		Gizmo->AttachToComponent(ComponentToAttachTo
+		, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	}
+	else
+	{
+	//	Gizmo->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	}
 
 	Gizmo->UpdateGizmoSpace(CurrentSpaceType);
@@ -969,14 +966,17 @@ void ATransformerPawn::ReplicatedMouseTraceByObjectTypes(float TraceDistance
 		{
 			if (!bTraceSuccessful && !bAppendToList)
 				ServerDeselectAll(false);
-
-			// If a Local Trace was on a Gizmo, just tell the Server that we 
-			// have hit our Gizmo and just change the Domain there.
-			// Else, do the Server Trace
-			if (CurrentDomain == ETransformationDomain::TD_None)
-				ServerTraceByObjectTypes(start, end, CollisionChannels, bAppendToList);
 			else
-				ServerSetDomain(CurrentDomain);
+			{
+				// If a Local Trace was on a Gizmo, just tell the Server that we 
+				// have hit our Gizmo and just change the Domain there.
+				// Else, do the Server Trace
+				if (CurrentDomain == ETransformationDomain::TD_None)
+					ServerTraceByObjectTypes(start, end, CollisionChannels, bAppendToList);
+				else
+					ServerSetDomain(CurrentDomain);
+			}
+			
 		}
 
 		
@@ -1059,10 +1059,14 @@ TArray<AActor*> ATransformerPawn::GetIgnoredActorsForServerTrace() const
 
 void ATransformerPawn::ReplicateServerTraceResults(bool bTraceSuccessful, bool bAppendToList)
 {
-	if (!bTraceSuccessful && !bAppendToList)
-		DeselectAll(false);
-	MulticastSetDomain(CurrentDomain);
-	MulticastSetSelectedComponents(SelectedComponents);
+	//Only perform this on Clients
+	if (!HasAuthority())
+	{
+		if (!bTraceSuccessful && !bAppendToList)
+			DeselectAll(false);
+		MulticastSetDomain(CurrentDomain);
+		MulticastSetSelectedComponents(SelectedComponents);
+	}
 }
 
 void ATransformerPawn::LogSelectedComponents()

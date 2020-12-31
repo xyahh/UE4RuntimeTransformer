@@ -41,6 +41,17 @@ ABaseGizmo::ABaseGizmo()
 	bIsPrevRayValid = false;
 }
 
+void ABaseGizmo::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	//ToDo: There seems to be an issue where the Root Scene doesn't Attach properly on the first 'go' on Unreal 4.26
+	if (RootScene)
+	{
+		RootScene->AttachToComponent(RootScene->GetAttachParent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+	}
+}
+
 void ABaseGizmo::UpdateGizmoSpace(ESpaceType SpaceType)
 {
 	switch (SpaceType)

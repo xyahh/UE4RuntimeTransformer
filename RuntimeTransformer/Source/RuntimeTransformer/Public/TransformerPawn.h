@@ -521,33 +521,33 @@ public:
 	void LogSelectedComponents();
 
 	/*
-	 * ServerCall, Unreliable. Trace is performed in the Server.
+	 * ServerCall, Reliable. Trace is performed in the Server.
 	 * Currently no Validation takes place.
 	 * @ see TraceByObjectTypes
 	 */
-	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer", meta = (DeprecatedFunction))
 	void ServerTraceByObjectTypes(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const TArray<TEnumAsByte<ECollisionChannel>>& CollisionChannels
 		, bool bAppendToList);
 
 	/*
-	 * ServerCall, Unreliable. Trace is performed in the Server.
+	 * ServerCall, Reliable. Trace is performed in the Server.
 	 * Currently no Validation takes place.
 	 * @ see TraceByChannel
 	 */
-	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer", meta = (DeprecatedFunction))
 	void ServerTraceByChannel(const FVector& StartLocation
 		, const FVector& EndLocation
 		, ECollisionChannel TraceChannel
 		, bool bAppendToList);
 
 	/*
-	 * ServerCall, Unreliable. Trace is performed in the Server.
+	 * ServerCall, Reliable. Trace is performed in the Server.
 	 * Currently no Validation takes place.
-	 * @ see TraceByProfile
+	 * @ see TraceByProfile, meta = (DeprecatedFunction)
 	 */
-	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer", meta = (DeprecatedFunction))
 	void ServerTraceByProfile(const FVector& StartLocation
 		, const FVector& EndLocation
 		, const FName& ProfileName
@@ -595,18 +595,18 @@ public:
 	void ReplicateFinishTransform();
 
 	/*
-	 * ServerCall, Unreliable. DeselectAll is performed in the Server.
+	 * ServerCall, Reliable. DeselectAll is performed in the Server.
 	 * Currently no Validation takes place.
 	 * @ see DeselectAll
 	 */
-	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerDeselectAll(bool bDestroySelected);
 
 	/*
-	 * Multicast, Unreliable. DeselectAll is performed in the Clients.
+	 * Multicast, Reliable. DeselectAll is performed in the Clients.
 	 * @ see DeselectAll
 	 */
-	UFUNCTION(NetMulticast, Unreliable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastDeselectAll(bool bDestroySelected);
 
 
@@ -671,7 +671,7 @@ public:
 	void MulticastSetRotateOnLocalAxis(bool bRotateLocalAxis);
 
 	/*
-	* ServerCall, Unreliable. CloneSelected is performed in the Server.
+	* ServerCall, Reliable. CloneSelected is performed in the Server.
 	* Currently no Validation takes place. 
 
 	* WARNING: Component Cloning will NOT take place. (PluginLimitations.txt for details)
@@ -683,7 +683,7 @@ public:
 	* @ see CloneSelected
 	* @ see CheckUnreplicatedActors
 	*/
-	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerCloneSelected(bool bSelectNewClones = true
 		, bool bAppendToList = false);
 	
@@ -695,18 +695,18 @@ public:
 	void CheckUnreplicatedActors();
 
 	/*
-	 * ServerCall, Unreliable. SetDomain is performed in the Server.
+	 * ServerCall, Reliable. SetDomain is performed in the Server.
 	 * Currently no Validation takes place.
 	 * @ see SetDomain
 	 */
-	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Replicated Runtime Transformer")
 	void ServerSetDomain(ETransformationDomain Domain);
 
 	/*
-	 * Multicast, Unreliable. SetDomain is performed in the Clients.
+	 * Multicast, Reliable. SetDomain is performed in the Clients.
 	 * @ see SetDomain
 	 */
-	UFUNCTION(NetMulticast, Unreliable, Category = "Replicated Runtime Transformer")
+	UFUNCTION(NetMulticast, Reliable, Category = "Replicated Runtime Transformer")
 	void MulticastSetDomain(ETransformationDomain Domain);
 
 	/*
