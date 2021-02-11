@@ -18,8 +18,6 @@
 /* Interface */
 #include "FocusableObject.h"
 
-#define RTT_LOG(LogType, x, ...)  UE_LOG(LogRuntimeTransformer, LogType, TEXT(x), __VA_ARGS__)
-
 // Sets default values
 ATransformerPawn::ATransformerPawn()
 {
@@ -125,7 +123,7 @@ void ATransformerPawn::FilterHits(TArray<FHitResult>& outHits)
 				else
 					continue; //actors only consider whether they replicate
 			}
-			RTT_LOG(Warning, "Removing (Actor: %s   ComponentHit:  %s) from hits because it is not supported for networking."
+			UE_LOG(LogRuntimeTransformer, Warning, TEXT("Removing (Actor: %s   ComponentHit:  %s) from hits because it is not supported for networking.")
 				, *checkHits[i].Actor->GetName(), *checkHits[i].Component->GetName());
 			outHits.RemoveAt(i);
 		}
@@ -431,7 +429,7 @@ void ATransformerPawn::ApplyDeltaTransform(const FTransform& DeltaTransform)
 		}
 		else
 		{
-			RTT_LOG(Warning, "Transform will not affect Component [%s] as it is NOT Moveable!", *sc->GetName());
+			UE_LOG(LogRuntimeTransformer, Warning, TEXT("Transform will not affect Component [%s] as it is NOT Moveable!"), *sc->GetName());
 		}
 			
 	}
@@ -507,7 +505,10 @@ void ATransformerPawn::SetTransformationType(ETransformationType TransformationT
 	if (CurrentTransformation == TransformationType) return;
 
 	if (TransformationType == ETransformationType::TT_NoTransform)
-		RTT_LOG(Warning, "Setting Transformation Type to None!");
+    {
+        UE_LOG(LogRuntimeTransformer, Warning, TEXT("Setting Transformation Type to None!"));
+    }
+       
 
 	CurrentTransformation = TransformationType;
 
@@ -544,7 +545,10 @@ void ATransformerPawn::CloneSelected(bool bSelectNewClones
 	, bool bAppendToList)
 {
 	if (GetLocalRole() < ROLE_Authority)
-		RTT_LOG(Warning, "Cloning in a Non-Authority! Please use the Clone RPCs instead");
+    {
+        UE_LOG(LogRuntimeTransformer, Warning, TEXT("Cloning in a Non-Authority! Please use the Clone RPCs instead"));
+    }
+		
 
 	auto CloneComponents = CloneFromList(SelectedComponents);
 
@@ -1072,9 +1076,9 @@ void ATransformerPawn::ReplicateServerTraceResults(bool bTraceSuccessful, bool b
 void ATransformerPawn::LogSelectedComponents()
 {
 
-	RTT_LOG(Log, "******************** SELECTED COMPONENTS LOG START ********************");
-	RTT_LOG(Log, "   * Selected Component Count: %d", SelectedComponents.Num());
-	RTT_LOG(Log, "   * -------------------------------- ");
+	UE_LOG(LogRuntimeTransformer, Log, TEXT("******************** SELECTED COMPONENTS LOG START ********************"));
+    UE_LOG(LogRuntimeTransformer, Log, TEXT("   * Selected Component Count: %d"), SelectedComponents.Num());
+    UE_LOG(LogRuntimeTransformer, Log, TEXT("   * -------------------------------- "));
 	for (int32 i = 0; i < SelectedComponents.Num(); ++i)
 	{
 		USceneComponent* cmp = SelectedComponents[i];
@@ -1090,10 +1094,10 @@ void ATransformerPawn::LogSelectedComponents()
 		else
 			message += TEXT("[INVALID]");
 
-		RTT_LOG(Log, "   * [%d] %s", i, *message);
+        UE_LOG(LogRuntimeTransformer, Log, TEXT("   * [%d] %s"), i, *message);
 	}
 
-	RTT_LOG(Log, "******************** SELECTED COMPONENTS LOG END   ********************");
+    UE_LOG(LogRuntimeTransformer, Log, TEXT("******************** SELECTED COMPONENTS LOG END   ********************"));
 }
 
 bool ATransformerPawn::ServerTraceByObjectTypes_Validate(
@@ -1286,7 +1290,7 @@ void ATransformerPawn::ServerCloneSelected_Implementation(bool bSelectNewClones
 {
 	if (bComponentBased)
 	{
-		RTT_LOG(Warning, "** Component Cloning is currently not supported in a Network Environment :( **");
+		UE_LOG(LogRuntimeTransformer, Warning, TEXT("** Component Cloning is currently not supported in a Network Environment :( **"));
 		// see PluginLimitations.txt for a reason why Component Cloning is not supported
 		return;
 	}
@@ -1338,7 +1342,7 @@ void ATransformerPawn::CheckUnreplicatedActors()
 		//stop calling this if no more unreplicated actors
 		GetWorldTimerManager().ClearTimer(CheckUnrepTimerHandle);
 
-		RTT_LOG(Log, "[SERVER] Time Elapsed for %d Replicated Actors to replicate: %f"
+		UE_LOG(LogRuntimeTransformer, Log, TEXT("[SERVER] Time Elapsed for %d Replicated Actors to replicate: %f")
 			, SelectedComponents.Num(), timeElapsed);
 
 		//send all the selected replicated actors!
@@ -1374,7 +1378,10 @@ void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
 	const TArray<USceneComponent*>& Components)
 {
 	if (GetLocalRole() < ROLE_Authority)
-		RTT_LOG(Log, "MulticastSelect ComponentCount: %d", Components.Num());
+    {
+        UE_LOG(LogRuntimeTransformer, Log, TEXT("MulticastSelect ComponentCount: %d"), Components.Num());
+    }
+		
 
 	DeselectAll(); //calling here because Selecting MultipleComponents empty is not going to call Deselect all
 	SelectMultipleComponents(Components, true);
@@ -1397,19 +1404,22 @@ void ATransformerPawn::MulticastSetSelectedComponents_Implementation(
 	
 
 	if (GetLocalRole() < ROLE_Authority)
-		RTT_LOG(Log, "Selected ComponentCount: %d", SelectedComponents.Num());
+    {
+        UE_LOG(LogRuntimeTransformer, Log, TEXT("Selected ComponentCount: %d"), SelectedComponents.Num());
+    }
+		
 }
 
 void ATransformerPawn::ResyncSelection()
 {
 	if (bResyncSelection)
 	{
-		RTT_LOG(Warning, "Resyncing Selection");
+        UE_LOG(LogRuntimeTransformer,Warning, TEXT("Resyncing Selection"));
 		ServerSyncSelectedComponents();
 	}
 	else
 	{
-		RTT_LOG(Warning, "Resyncing FINISHED");
+        UE_LOG(LogRuntimeTransformer, Warning, TEXT("Resyncing FINISHED"));
 		//stop calling this if no more resync is needed
 		GetWorldTimerManager().ClearTimer(ResyncSelectionTimerHandle);
 	}
